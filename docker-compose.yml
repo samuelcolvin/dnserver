@@ -1,0 +1,23 @@
+version: '2'
+
+networks:
+  mynet:
+    ipam:
+      config:
+      - subnet: 172.25.0.0/24
+
+services:
+  ns:
+    build: .
+    restart: always
+    networks:
+      mynet:
+        ipv4_address: 172.25.0.101
+
+  test:
+    build: dockertest
+    dns: 172.25.0.101
+    networks:
+    - mynet
+    depends_on:
+    - ns
