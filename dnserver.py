@@ -11,8 +11,7 @@ from dnslib import DNSLabel, QTYPE, RR, dns
 from dnslib.proxy import ProxyResolver
 from dnslib.server import DNSServer
 
-EPOCH = datetime(1970, 1, 1)
-SERIAL = int((datetime.utcnow() - EPOCH).total_seconds())
+SERIAL = int((datetime.utcnow() - datetime(1970, 1, 1)).total_seconds())
 
 handler = logging.StreamHandler()
 handler.setLevel(logging.INFO)
