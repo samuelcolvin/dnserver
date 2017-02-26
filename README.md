@@ -5,12 +5,20 @@ Simple DNS server written in python for use in development and testing.
 The DNS serves it's own records, if none are found it proxies the request to and upstream DNS server 
 eg. google at `8.8.8.8`.
 
-You can setup the by default if serves some records for `example.com`)
+You can setup records you want to serve with a custom `zones.txt` file, 
+see [example_zones.txt](example_zones.txt) for the format.
 
 To use with docker:
 
     docker pull samuelcolvin/dnserver
     docker run -p 5053:53/udp -p 5053:53/tcp --rm dnserver
+
+Or with a custom zone file
+
+    docker run -p 5053:53/udp -v `pwd`/zones:/zones --rm samuelcolvin/dnserver
+    
+assuming you have your zone records at `./zones/zones.txt`. 
+(TCP isn't required to use `dig`, hence why it's omitted here.)
 
 Or see [docker-compose.yml](docker-compose.yml) for example of using dnserver with docker compose.
 
@@ -47,3 +55,7 @@ tutorcruncher.com.	299	IN	MX	10 aspmx3.googlemail.com.
 ;; WHEN: Sun Feb 26 18:14:48 GMT 2017
 ;; MSG SIZE  rcvd: 176
 ```
+
+You can see that the first query took 2ms and returned results from [example_zones.txt](example_zones.txt),
+the second query took 39ms as dnserver didn't have any records for the domain so had to proxy the query to
+the upstream DNS server.

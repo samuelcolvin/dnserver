@@ -90,7 +90,7 @@ class Resolver(ProxyResolver):
 
     def load_zones(self, zone_file):
         assert zone_file.exists(), f'zone files "{zone_file}" does not exist'
-        logger.info('loading zone file:')
+        logger.info('loading zone file "%s":', zone_file)
         zones = []
         for line_ in zone_file.open():
             try:
@@ -107,7 +107,7 @@ class Resolver(ProxyResolver):
                 zones.append(record)
                 logger.info(' %2d: %s', len(zones), record)
             except Exception as e:
-                raise RuntimeError(f'Error processing line "{line_}"') from e
+                raise RuntimeError(f'Error processing line "{line_.strip()}"') from e
         logger.info('%d zone resource records generated from zone file', len(zones))
         return zones
 
