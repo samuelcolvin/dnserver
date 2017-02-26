@@ -8,8 +8,7 @@ networks:
 
 services:
   ns:
-    build: .
-    restart: always
+    image: samuelcolvin/dnserver
     networks:
       mynet:
         ipv4_address: 172.25.0.101

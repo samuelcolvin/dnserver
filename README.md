@@ -12,6 +12,8 @@ To use with docker:
 
     docker run -p 5053:53/udp -p 5053:53/tcp --rm samuelcolvin/dnserver
 
+(See [dnserver on hub.docker.com](https://hub.docker.com/r/samuelcolvin/dnserver/))
+
 Or with a custom zone file
 
     docker run -p 5053:53/udp -v `pwd`/zones.txt:/zones/zones.txt --rm samuelcolvin/dnserver
@@ -19,7 +21,9 @@ Or with a custom zone file
 (assuming you have your zone records at `./zones.txt`, 
 TCP isn't required to use `dig`, hence why it's omitted in this case.)
 
-Or see [docker-compose.yml](docker-compose.yml) for example of using dnserver with docker compose.
+Or see [docker-compose.yml](docker-compose.yml) for example of using dnserver with docker compose. 
+It demonstrates using dnserver as the DNS server for another container with then tries to make DNS queries
+for numerous domains.
 
 To run without docker (assuming you have `dnslib==0.9.7` and python 3.6 installed):
 

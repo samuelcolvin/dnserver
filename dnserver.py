@@ -11,7 +11,7 @@ from dnslib import DNSLabel, QTYPE, RR, dns
 from dnslib.proxy import ProxyResolver
 from dnslib.server import DNSServer
 
-SERIAL = int((datetime.utcnow() - datetime(1970, 1, 1)).total_seconds())
+SERIAL_NO = int((datetime.utcnow() - datetime(1970, 1, 1)).total_seconds())
 
 handler = logging.StreamHandler()
 handler.setLevel(logging.INFO)
@@ -47,19 +47,18 @@ class Record:
 
         if self._rtype == QTYPE.SOA and len(args) == 2:
             # add sensible times to SOA
-            args += ((
-                SERIAL,  # serial number
-                60 * 60 * 1,  # refresh
-                60 * 60 * 3,  # retry
-                60 * 60 * 24,  # expire
-                60 * 60 * 1,  # minimum
-            ),)
+            args += (SERIAL_NO, 3600, 3600 * 3, 3600 * 24, 3600),
+
+        if self._rtype in (QTYPE.NS, QTYPE.SOA):
+            ttl = 3600 * 24
+        else:
+            ttl = 300
 
         self.rr = RR(
             rname=self._rname,
             rtype=self._rtype,
             rdata=rd_cls(*args),
-            ttl=self.sensible_ttl(),
+            ttl=ttl,
         )
 
     def match(self, q):
@@ -67,16 +66,6 @@ class Record:
 
     def sub_match(self, q):
         return self._rtype == QTYPE.SOA and q.qname.matchSuffix(self._rname)
-
-    def sensible_ttl(self):
-        if self._rtype in (QTYPE.NS, QTYPE.SOA):
-            return 60 * 60 * 24
-        else:
-            return 300
-
-    @property
-    def is_soa(self):
-        return self._rtype == QTYPE.SOA
 
     def __str__(self):
         return str(self.rr)

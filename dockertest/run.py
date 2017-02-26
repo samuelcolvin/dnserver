@@ -16,24 +16,27 @@ logger.addHandler(handler)
 logger.setLevel(logging.INFO)
 
 
-async def query(resolver, *args):
+async def query(resolver, domain, qtype):
+    logger.info('%s %s:', domain, qtype)
     try:
-        return await resolver.query(*args)
+        ans = await resolver.query(domain, qtype)
     except DNSError as e:
-        return f'{e.__class__.__name__}: {e}'
+        logger.info('    %s: %s', e.__class__.__name__, e)
+    else:
+        for v in ans:
+            logger.info('    %s', v)
 
 
 async def main(loop):
     resolver = aiodns.DNSResolver(loop=loop)
-    for domain in ('example.com', 'google.com', 'ns', 'test'):
-        logger.info('%s %s:', domain, 'A')
-        logger.info('    %s', await query(resolver, domain, 'A'))
-    logger.info('%s %s:', 'example.com', 'MX')
-    logger.info('    %s', await query(resolver, 'example.com', 'MX'))
+    for domain in ('example.com', 'google.com', 'ns', 'test', 'fails'):
+        await query(resolver, domain, 'A')
+    await query(resolver, 'example.com', 'MX')
+    await query(resolver, 'foobar.example.com', 'A')
 
 
 if __name__ == '__main__':
-    sleep(2)
+    sleep(1)
     logger.info('/etc/hosts:\n%s', Path('/etc/hosts').read_text())
     logger.info('/etc/resolv.conf:\n%s', Path('/etc/resolv.conf').read_text())
     logger.info('starting dns tests')
