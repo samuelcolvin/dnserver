@@ -2,7 +2,7 @@
 # each line is considered a separate resource record, and parts (split on white space) considered thus:
 # 1:               the host
 # 2:               the record type
-# everything else: either a single string or json if startswith "[" or "{"
+# everything else: either a single string or json list if startswith "["
 example.com  A       1.2.3.4
 example.com  CNAME   whatever.com
 example.com  MX      ["whatever.com.", 5]
