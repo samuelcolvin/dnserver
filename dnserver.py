@@ -5,6 +5,7 @@ import os
 import signal
 from datetime import datetime
 from pathlib import Path
+from textwrap import wrap
 from time import sleep
 
 from dnslib import DNSLabel, QTYPE, RR, dns
@@ -49,6 +50,10 @@ class Record:
             # add sensible times to SOA
             args += (SERIAL_NO, 3600, 3600 * 3, 3600 * 24, 3600),
 
+        if self._rtype == QTYPE.TXT and len(args) == 1 and isinstance(args[0], str) and len(args[0]) > 255:
+            # wrap long TXT records as per dnslib's docs.
+            args = wrap(args[0], 255),
+
         if self._rtype in (QTYPE.NS, QTYPE.SOA):
             ttl = 3600 * 24
         else:
@@ -76,15 +81,25 @@ class Resolver(ProxyResolver):
         super().__init__(upstream, 53, 5)
         self.records = self.load_zones(zone_file)
 
+    def zone_lines(self):
+        current_line = ''
+        for line in zone_file.open():
+            if line.startswith('#'):
+                continue
+            line = line.rstrip('\r\n\t ')
+            if not line.startswith(' ') and current_line:
+                yield current_line
+                current_line = ''
+            current_line += line.lstrip('\r\n\t ')
+        if current_line:
+            yield current_line
+
     def load_zones(self, zone_file):
         assert zone_file.exists(), f'zone files "{zone_file}" does not exist'
         logger.info('loading zone file "%s":', zone_file)
         zones = []
-        for line_ in zone_file.open():
+        for line in self.zone_lines():
             try:
-                line = line_.strip('\n\t ')
-                if line.startswith('#'):
-                    continue
                 rname, rtype, args_ = line.split(maxsplit=2)
 
                 if args_.startswith('['):
@@ -95,7 +110,7 @@ class Resolver(ProxyResolver):
                 zones.append(record)
                 logger.info(' %2d: %s', len(zones), record)
             except Exception as e:
-                raise RuntimeError(f'Error processing line "{line_.strip()}"') from e
+                raise RuntimeError(f'Error processing line ({e.__class__.__name__}: {e}) "{line.strip()}"') from e
         logger.info('%d zone resource records generated from zone file', len(zones))
         return zones
 
