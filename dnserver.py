@@ -123,6 +123,7 @@ class Resolver(ProxyResolver):
 
         if reply.rr:
             logger.info('found zone for %s[%s], %d replies', request.q.qname, type_name, len(reply.rr))
+            reply.header.ra = 0
             return reply
 
         # no direct zone so look for an SOA record for a higher level zone
@@ -132,6 +133,7 @@ class Resolver(ProxyResolver):
 
         if reply.rr:
             logger.info('found higher level SOA resource for %s[%s]', request.q.qname, type_name)
+            reply.header.ra = 0
             return reply
 
         logger.info('no local zone found, proxying %s[%s]', request.q.qname, type_name)
