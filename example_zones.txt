@@ -16,7 +16,7 @@ example.com  TXT     hello this is some text
 example.com  SOA     ["ns1.example.com", "dns.example.com"]
 # because the next record exceeds 255 in length dnserver will automatically
 # split it into a multipart record, the new lines here have no effect on that
-node8000.com  TXT    one long value: IICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAg
+testing.com  TXT    one long value: IICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAg
     FWZUed1qcBziAsqZ/LzT2ASxJYuJ5sko1CzWFhFuxiluNnwKjSknSjanyYnm0vro4dhAtyiQ7O
     PVROOaNy9Iyklvu91KuhbYi6l80Rrdnuq1yjM//xjaB6DGx8+m1ENML8PEdSFbKQbh9akm2bkN
     w5DC5a8Slp7j+eEVHkgV3k3oRhkPcrKyoPVvniDNH+Ln7DnSGC+Aw5Sp+fhu5aZmoODhhX5/1m

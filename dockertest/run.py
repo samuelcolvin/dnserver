@@ -33,6 +33,7 @@ async def main(loop):
         await query(resolver, domain, 'A')
     await query(resolver, 'example.com', 'MX')
     await query(resolver, 'foobar.example.com', 'A')
+    await query(resolver, 'testing.com', 'TXT')
 
 
 if __name__ == '__main__':
