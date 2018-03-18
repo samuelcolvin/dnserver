@@ -2,7 +2,7 @@
 
 Simple DNS server written in python for use in development and testing.
 
-The DNS serves it's own records, if none are found it proxies the request to and upstream DNS server 
+The DNS serves it's own records, if none are found it proxies the request to an upstream DNS server 
 eg. google at `8.8.8.8`.
 
 You can setup records you want to serve with a custom `zones.txt` file, 
@@ -22,7 +22,7 @@ Or with a custom zone file
 TCP isn't required to use `dig`, hence why it's omitted in this case.)
 
 Or see [docker-compose.yml](docker-compose.yml) for example of using dnserver with docker compose. 
-It demonstrates using dnserver as the DNS server for another container with then tries to make DNS queries
+It demonstrates using dnserver as the DNS server for another container which then tries to make DNS queries
 for numerous domains.
 
 To run without docker (assuming you have `dnslib==0.9.7` and python 3.6 installed):
