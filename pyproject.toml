@@ -9,7 +9,7 @@ path = 'dnserver/version.py'
 name = 'dnserver'
 description = 'Simple DNS server written in python for use in development and testing.'
 authors = [{name = 'Samuel Colvin', email = 's@muelcolvin.com'}]
-license = {file = 'LICENSE'}
+license-files = { paths = ['LICENSE'] }
 readme = 'README.md'
 classifiers = [
     'Development Status :: 4 - Beta',
@@ -41,7 +41,7 @@ dependencies = [
     'tomli;python_version<"3.11"',
     'typing_extensions;python_version<"3.8"',
 ]
-dynamic = ['version']
+dynamic = ['version', 'license']
 
 [project.scripts]
 dnserver = 'dnserver.cli:cli'
