@@ -1,16 +1,15 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python
 import json
 import logging
 import os
 import signal
 from datetime import datetime
-from pathlib import Path
 from textwrap import wrap
 from time import sleep
 
 from dnslib import DNSLabel, QTYPE, RR, dns
 from dnslib.proxy import ProxyResolver
-from dnslib.server import DNSServer
+from dnslib.server import DNSServer as DNSServer_
 
 SERIAL_NO = int((datetime.utcnow() - datetime(1970, 1, 1)).total_seconds())
 
@@ -77,13 +76,13 @@ class Record:
 
 
 class Resolver(ProxyResolver):
-    def __init__(self, upstream, zone_file):
-        super().__init__(upstream, 53, 5)
-        self.records = self.load_zones(zone_file)
+    def __init__(self, zone, upstream):
+        super().__init__(address=upstream, port=53, timeout=5)
+        self.records = self.load_zones(zone)
 
-    def zone_lines(self):
+    def zone_lines(self, zone):
         current_line = ''
-        for line in zone_file.open():
+        for line in zone.splitlines():
             if line.startswith('#'):
                 continue
             line = line.rstrip('\r\n\t ')
@@ -94,11 +93,10 @@ class Resolver(ProxyResolver):
         if current_line:
             yield current_line
 
-    def load_zones(self, zone_file):
-        assert zone_file.exists(), f'zone files "{zone_file}" does not exist'
-        logger.info('loading zone file "%s":', zone_file)
+    def load_zones(self, zone):
+        logger.info('loading zone')
         zones = []
-        for line in self.zone_lines():
+        for line in self.zone_lines(zone):
             try:
                 rname, rtype, args_ = line.split(maxsplit=2)
 
@@ -138,6 +136,32 @@ class Resolver(ProxyResolver):
         return super().resolve(request, handler)
 
 
+class DNSServer():
+    def __init__(self, port=53, zone=None, upstream=None):
+        self.port = port
+        self.upstream = upstream
+        self.zone = zone
+        self.udp_server = None
+        self.tcp_server = None
+
+    def start(self):
+        logger.info('starting DNS server on port %d, upstream DNS server "%s"', self.port, self.upstream)
+        resolver = Resolver(self.zone, self.upstream)
+
+        self.udp_server = DNSServer_(resolver, port=self.port)
+        self.tcp_server = DNSServer_(resolver, port=self.port, tcp=True)
+        self.udp_server.start_thread()
+        self.tcp_server.start_thread()
+
+    def stop(self):
+        self.udp_server.stop()
+        self.tcp_server.stop()
+
+    @property
+    def is_running(self):
+        return (self.udp_server and self.udp_server.isAlive()) or (self.tcp_server and self.tcp_server.isAlive())
+
+
 def handle_sig(signum, frame):
     logger.info('pid=%d, got signal: %s, stopping...', os.getpid(), signal.Signals(signum).name)
     exit(0)
@@ -148,17 +172,14 @@ if __name__ == '__main__':
 
     port = int(os.getenv('PORT', 53))
     upstream = os.getenv('UPSTREAM', '8.8.8.8')
-    zone_file = Path(os.getenv('ZONE_FILE', '/zones/zones.txt'))
-    resolver = Resolver(upstream, zone_file)
-    udp_server = DNSServer(resolver, port=port)
-    tcp_server = DNSServer(resolver, port=port, tcp=True)
+    with open(os.getenv('ZONE_FILE', '/zones/zones.txt')) as fd:
+        zone = fd.read()
 
-    logger.info('starting DNS server on port %d, upstream DNS server "%s"', port, upstream)
-    udp_server.start_thread()
-    tcp_server.start_thread()
+    server = DNSServer(port, zone, upstream)
+    server.start()
 
     try:
-        while udp_server.isAlive():
+        while server.is_running:
             sleep(1)
     except KeyboardInterrupt:
         pass

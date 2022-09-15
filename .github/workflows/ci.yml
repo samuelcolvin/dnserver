@@ -1,0 +1,62 @@
+---
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - '**'
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  test:
+    name: test ${{ matrix.python-version }} on ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu, macos]
+        python-version: ['3.7', '3.8', '3.9', '3.10']
+        # test 3.11-dev and pypy on ubuntu only to speed up CI, no reason why macos X pypy should fail separately
+        include:
+          - os: 'ubuntu'
+            python-version: '3.11-dev'
+          - os: 'ubuntu'
+            python-version: 'pypy-3.7'
+          - os: 'ubuntu'
+            python-version: 'pypy-3.8'
+          - os: 'ubuntu'
+            python-version: 'pypy-3.9'
+
+    runs-on: ${{ matrix.os }}-latest
+
+    env:
+      PYTHON: ${{ matrix.python-version }}
+      OS: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: set up python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - uses: actions/cache@v3
+        id: cache
+        with:
+          path: ${{ env.pythonLocation }}
+          key: ${{ runner.os }}-${{ env.pythonLocation }}-${{ hashFiles('pyproject.toml') }}-${{ hashFiles('dev_requirements.txt') }}
+
+      - run: pip install -r dev_requirements.txt -r requirements.txt
+        if: steps.cache.outputs.cache-hit != 'true'
+
+      - run: coverage run -m pytest
+
+      - run: coverage xml
+
+      - uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          env_vars: PYTHON,OS
