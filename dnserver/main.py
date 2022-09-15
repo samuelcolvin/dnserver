@@ -1,13 +1,16 @@
 from __future__ import annotations as _annotations
 
-import json
 import logging
 from datetime import datetime
+from pathlib import Path
 from textwrap import wrap
+from typing import Any
 
 from dnslib import QTYPE, RR, DNSLabel, dns
 from dnslib.proxy import ProxyResolver
 from dnslib.server import DNSServer as LibDNSServer
+
+from .load_records import Zone, load_records
 
 __all__ = 'DNSServer', 'logger'
 
@@ -42,18 +45,23 @@ DEFAULT_UPSTREAM = '1.1.1.1'
 
 
 class Record:
-    def __init__(self, rname, rtype, args):
-        self._rname = DNSLabel(rname)
+    def __init__(self, zone: Zone):
+        self._rname = DNSLabel(zone.host)
 
-        rd_cls, self._rtype = TYPE_LOOKUP[rtype]
+        rd_cls, self._rtype = TYPE_LOOKUP[zone.type]
 
-        if self._rtype == QTYPE.SOA and len(args) == 2:
-            # add sensible times to SOA
-            args += ((SERIAL_NO, 3600, 3600 * 3, 3600 * 24, 3600),)
-
-        if self._rtype == QTYPE.TXT and len(args) == 1 and isinstance(args[0], str) and len(args[0]) > 255:
-            # wrap long TXT records as per dnslib's docs.
-            args = (wrap(args[0], 255),)
+        args: list[Any]
+        if isinstance(zone.answer, str):
+            if self._rtype == QTYPE.TXT:
+                args = [wrap(zone.answer, 255)]
+            else:
+                args = [zone.answer]
+        else:
+            if self._rtype == QTYPE.SOA and len(zone.answer) == 2:
+                # add sensible times to SOA
+                args = zone.answer + [(SERIAL_NO, 3600, 3600 * 3, 3600 * 24, 3600)]
+            else:
+                args = zone.answer
 
         if self._rtype in (QTYPE.NS, QTYPE.SOA):
             ttl = 3600 * 24
@@ -78,41 +86,10 @@ class Record:
 
 
 class Resolver(ProxyResolver):
-    def __init__(self, zones_text: str, upstream: str):
+    def __init__(self, zones_file: str | Path, upstream: str):
+        records = load_records(zones_file)
+        self.records = [Record(zone) for zone in records.zones]
         super().__init__(address=upstream, port=53, timeout=5)
-        self.records = self.load_zones(zones_text)
-
-    def zone_lines(self, zone):
-        current_line = ''
-        for line in zone.splitlines():
-            if line.startswith('#'):
-                continue
-            line = line.rstrip('\r\n\t ')
-            if not line.startswith(' ') and current_line:
-                yield current_line
-                current_line = ''
-            current_line += line.lstrip('\r\n\t ')
-        if current_line:
-            yield current_line
-
-    def load_zones(self, zone):
-        logger.info('loading zone')
-        zones = []
-        for line in self.zone_lines(zone):
-            try:
-                rname, rtype, args_ = line.split(maxsplit=2)
-
-                if args_.startswith('['):
-                    args = tuple(json.loads(args_))
-                else:
-                    args = (args_,)
-                record = Record(rname, rtype, args)
-                zones.append(record)
-                logger.info(' %2d: %s', len(zones), record)
-            except Exception as e:
-                raise RuntimeError(f'Error processing line ({e.__class__.__name__}: {e}) "{line.strip()}"') from e
-        logger.info('%d zone resource records generated from zone file', len(zones))
-        return zones
 
     def resolve(self, request, handler):
         type_name = QTYPE[request.q.qtype]
@@ -139,8 +116,10 @@ class Resolver(ProxyResolver):
 
 
 class DNSServer:
-    def __init__(self, zones_text, *, port: int | str | None = DEFAULT_PORT, upstream: str | None = DEFAULT_UPSTREAM):
-        self.zones_text = zones_text
+    def __init__(
+        self, zones_file: str | Path, *, port: int | str | None = DEFAULT_PORT, upstream: str | None = DEFAULT_UPSTREAM
+    ):
+        self.zones_file = zones_file
         self.port: int = DEFAULT_PORT if port is None else int(port)
         self.upstream: str = DEFAULT_UPSTREAM if upstream is None else upstream
         self.udp_server: LibDNSServer | None = None
@@ -148,7 +127,7 @@ class DNSServer:
 
     def start(self):
         logger.info('starting DNS server on port %d, upstream DNS server "%s"', self.port, self.upstream)
-        resolver = Resolver(self.zones_text, self.upstream)
+        resolver = Resolver(self.zones_file, self.upstream)
 
         self.udp_server = LibDNSServer(resolver, port=self.port)
         self.tcp_server = LibDNSServer(resolver, port=self.port, tcp=True)

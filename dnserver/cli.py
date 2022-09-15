@@ -1,6 +1,5 @@
 import os
 import signal
-from pathlib import Path
 from time import sleep
 
 from .main import DNSServer, logger
@@ -20,9 +19,8 @@ def cli():
     port = os.getenv('PORT', 53)
     upstream = os.getenv('UPSTREAM', None)
     zones_file = os.getenv('ZONE_FILE', '/zones/zones.txt')
-    zones_text = Path(zones_file).read_text()
 
-    server = DNSServer(zones_text, port=port, upstream=upstream)
+    server = DNSServer(zones_file, port=port, upstream=upstream)
     server.start()
 
     try:

@@ -1,0 +1,63 @@
+# this is an example zones file
+[[zones]]
+host = 'example.com'
+type = 'A'
+answer = '1.2.3.4'
+
+[[zones]]
+host = 'example.com'
+type = 'A'
+answer = '1.2.3.4'
+
+[[zones]]
+host = 'example.com'
+type = 'CNAME'
+answer = 'whatever.com'
+
+[[zones]]
+host = 'example.com'
+type = 'MX'
+answer = ['whatever.com.', 5]
+
+[[zones]]
+host = 'example.com'
+type = 'MX'
+answer = ['mx2.whatever.com.', 10]
+
+[[zones]]
+host = 'example.com'
+type = 'MX'
+answer = ['mx3.whatever.com.', 20]
+
+[[zones]]
+host = 'example.com'
+type = 'NS'
+answer = 'ns1.whatever.com.'
+
+[[zones]]
+host = 'example.com'
+type = 'NS'
+answer = 'ns2.whatever.com.'
+
+[[zones]]
+host = 'example.com'
+type = 'TXT'
+answer = 'hello this is some text'
+
+[[zones]]
+host = 'example.com'
+type = 'SOA'
+answer = ['ns1.example.com', 'dns.example.com']
+
+[[zones]]
+host = 'testing.com'
+type = 'TXT'
+# because the next record exceeds 255 in length dnserver will automatically
+# split it into a multipart record, the new lines here have no effect on that
+answer = """
+one long value: IICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAg
+FWZUed1qcBziAsqZ/LzT2ASxJYuJ5sko1CzWFhFuxiluNnwKjSknSjanyYnm0vro4dhAtyiQ7O
+PVROOaNy9Iyklvu91KuhbYi6l80Rrdnuq1yjM//xjaB6DGx8+m1ENML8PEdSFbKQbh9akm2bkN
+w5DC5a8Slp7j+eEVHkgV3k3oRhkPcrKyoPVvniDNH+Ln7DnSGC+Aw5Sp+fhu5aZmoODhhX5/1m
+ANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEA26JaFWZUed1qcBziAsqZ/LzTF2ASxJYuJ5sk
+"""
