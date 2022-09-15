@@ -16,12 +16,6 @@ repos:
     types: [python]
     language: system
     pass_filenames: false
-#  - id: mypy
-#    name: Mypy
-#    entry: make mypy
-#    types: [python]
-#    language: system
-#    pass_filenames: false
   - id: pyupgrade
     name: Pyupgrade
     entry: pyupgrade --py37-plus

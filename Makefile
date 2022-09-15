@@ -29,12 +29,8 @@ testcov: test
 	@echo "building coverage html"
 	@coverage html
 
-.PHONY: mypy
-mypy:
-	mypy dnserver
-
 .PHONY: all
-all: lint mypy testcov
+all: lint testcov
 
 .PHONY: clean
 clean:
@@ -44,7 +40,6 @@ clean:
 	rm -f `find . -type f -name '.*~' `
 	rm -rf .cache
 	rm -rf .pytest_cache
-	rm -rf .mypy_cache
 	rm -rf htmlcov
 	rm -rf *.egg-info
 	rm -f .coverage

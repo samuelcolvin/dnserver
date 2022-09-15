@@ -31,12 +31,8 @@ isort[colors]==5.10.1
     # via -r requirements/linting.in
 mccabe==0.7.0
     # via flake8
-mypy==0.971
-    # via -r requirements/linting.in
 mypy-extensions==0.4.3
-    # via
-    #   black
-    #   mypy
+    # via black
 nodeenv==1.7.0
     # via pre-commit
 pathspec==0.9.0
@@ -63,9 +59,6 @@ tomli==2.0.1
     # via
     #   black
     #   flake8-pyproject
-    #   mypy
-typing-extensions==4.3.0
-    # via mypy
 virtualenv==20.16.5
     # via pre-commit
 

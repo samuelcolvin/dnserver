@@ -23,6 +23,6 @@ def dns_resolver():
     server.stop()
 
 
-def test_dnserver(dns_resolver):
+def test_a_record(dns_resolver):
     answers = dns_resolver.resolve('example.com', 'A')
     assert answers[0].address == '1.2.3.4'

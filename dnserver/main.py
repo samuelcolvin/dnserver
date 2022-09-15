@@ -1,15 +1,13 @@
 import json
 import logging
-import os
-import signal
 from datetime import datetime
-from pathlib import Path
 from textwrap import wrap
-from time import sleep
 
 from dnslib import QTYPE, RR, DNSLabel, dns
 from dnslib.proxy import ProxyResolver
 from dnslib.server import DNSServer as LibDNSServer
+
+__all__ = 'DNSServer', 'logger'
 
 SERIAL_NO = int((datetime.utcnow() - datetime(1970, 1, 1)).total_seconds())
 
@@ -106,7 +104,7 @@ class Resolver(ProxyResolver):
                     args = (args_,)
                 record = Record(rname, rtype, args)
                 zones.append(record)
-                # logger.info(' %2d: %s', len(zones), record)
+                logger.info(' %2d: %s', len(zones), record)
             except Exception as e:
                 raise RuntimeError(f'Error processing line ({e.__class__.__name__}: {e}) "{line.strip()}"') from e
         logger.info('%d zone resource records generated from zone file', len(zones))
@@ -162,26 +160,3 @@ class DNSServer:
     @property
     def is_running(self):
         return (self.udp_server and self.udp_server.isAlive()) or (self.tcp_server and self.tcp_server.isAlive())
-
-
-def handle_sig(signum, frame):
-    logger.info('pid=%d, got signal: %s, stopping...', os.getpid(), signal.Signals(signum).name)
-    exit(0)
-
-
-if __name__ == '__main__':
-    signal.signal(signal.SIGTERM, handle_sig)
-
-    port = int(os.getenv('PORT', 53))
-    upstream = os.getenv('UPSTREAM', '8.8.8.8')
-    zones_file = os.getenv('ZONE_FILE', '/zones/zones.txt')
-    zone = Path(zones_file).read_text()
-
-    server = DNSServer(port, zone, upstream)
-    server.start()
-
-    try:
-        while server.is_running:
-            sleep(1)
-    except KeyboardInterrupt:
-        pass
