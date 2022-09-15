@@ -43,4 +43,3 @@ if __name__ == '__main__':
     logger.info('starting dns tests')
     loop = asyncio.get_event_loop()
     loop.run_until_complete(main(loop))
-

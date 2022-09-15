@@ -1,0 +1,7 @@
+black
+flake8
+flake8-pyproject
+flake8-quotes
+isort[colors]
+pyupgrade
+pre-commit

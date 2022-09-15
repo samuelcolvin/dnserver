@@ -1,15 +1,15 @@
-#!/usr/bin/env python
+from __future__ import annotations as _annotations
+
 import json
 import logging
-import os
-import signal
 from datetime import datetime
 from textwrap import wrap
-from time import sleep
 
-from dnslib import DNSLabel, QTYPE, RR, dns
+from dnslib import QTYPE, RR, DNSLabel, dns
 from dnslib.proxy import ProxyResolver
-from dnslib.server import DNSServer as DNSServer_
+from dnslib.server import DNSServer as LibDNSServer
+
+__all__ = 'DNSServer', 'logger'
 
 SERIAL_NO = int((datetime.utcnow() - datetime(1970, 1, 1)).total_seconds())
 
@@ -37,6 +37,8 @@ TYPE_LOOKUP = {
     'TXT': (dns.TXT, QTYPE.TXT),
     'SPF': (dns.TXT, QTYPE.TXT),
 }
+DEFAULT_PORT = 53
+DEFAULT_UPSTREAM = '1.1.1.1'
 
 
 class Record:
@@ -47,11 +49,11 @@ class Record:
 
         if self._rtype == QTYPE.SOA and len(args) == 2:
             # add sensible times to SOA
-            args += (SERIAL_NO, 3600, 3600 * 3, 3600 * 24, 3600),
+            args += ((SERIAL_NO, 3600, 3600 * 3, 3600 * 24, 3600),)
 
         if self._rtype == QTYPE.TXT and len(args) == 1 and isinstance(args[0], str) and len(args[0]) > 255:
             # wrap long TXT records as per dnslib's docs.
-            args = wrap(args[0], 255),
+            args = (wrap(args[0], 255),)
 
         if self._rtype in (QTYPE.NS, QTYPE.SOA):
             ttl = 3600 * 24
@@ -76,9 +78,9 @@ class Record:
 
 
 class Resolver(ProxyResolver):
-    def __init__(self, zone, upstream):
+    def __init__(self, zones_text: str, upstream: str):
         super().__init__(address=upstream, port=53, timeout=5)
-        self.records = self.load_zones(zone)
+        self.records = self.load_zones(zones_text)
 
     def zone_lines(self, zone):
         current_line = ''
@@ -136,50 +138,29 @@ class Resolver(ProxyResolver):
         return super().resolve(request, handler)
 
 
-class DNSServer():
-    def __init__(self, port=53, zone=None, upstream=None):
-        self.port = port
-        self.upstream = upstream
-        self.zone = zone
-        self.udp_server = None
-        self.tcp_server = None
+class DNSServer:
+    def __init__(self, zones_text, *, port: int | str | None = DEFAULT_PORT, upstream: str | None = DEFAULT_UPSTREAM):
+        self.zones_text = zones_text
+        self.port: int = DEFAULT_PORT if port is None else int(port)
+        self.upstream: str = DEFAULT_UPSTREAM if upstream is None else upstream
+        self.udp_server: LibDNSServer | None = None
+        self.tcp_server: LibDNSServer | None = None
 
     def start(self):
         logger.info('starting DNS server on port %d, upstream DNS server "%s"', self.port, self.upstream)
-        resolver = Resolver(self.zone, self.upstream)
+        resolver = Resolver(self.zones_text, self.upstream)
 
-        self.udp_server = DNSServer_(resolver, port=self.port)
-        self.tcp_server = DNSServer_(resolver, port=self.port, tcp=True)
+        self.udp_server = LibDNSServer(resolver, port=self.port)
+        self.tcp_server = LibDNSServer(resolver, port=self.port, tcp=True)
         self.udp_server.start_thread()
         self.tcp_server.start_thread()
 
     def stop(self):
         self.udp_server.stop()
+        self.udp_server.server.server_close()
         self.tcp_server.stop()
+        self.tcp_server.server.server_close()
 
     @property
     def is_running(self):
         return (self.udp_server and self.udp_server.isAlive()) or (self.tcp_server and self.tcp_server.isAlive())
-
-
-def handle_sig(signum, frame):
-    logger.info('pid=%d, got signal: %s, stopping...', os.getpid(), signal.Signals(signum).name)
-    exit(0)
-
-
-if __name__ == '__main__':
-    signal.signal(signal.SIGTERM, handle_sig)
-
-    port = int(os.getenv('PORT', 53))
-    upstream = os.getenv('UPSTREAM', '8.8.8.8')
-    with open(os.getenv('ZONE_FILE', '/zones/zones.txt')) as fd:
-        zone = fd.read()
-
-    server = DNSServer(port, zone, upstream)
-    server.start()
-
-    try:
-        while server.is_running:
-            sleep(1)
-    except KeyboardInterrupt:
-        pass
