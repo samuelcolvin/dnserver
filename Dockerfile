@@ -10,4 +10,5 @@ ADD ./README.md /home/root/code
 RUN pip install /home/root/code
 EXPOSE 53/tcp
 EXPOSE 53/udp
-CMD ["dnserver"]
+ENTRYPOINT ["dnserver"]
+CMD ["/zones/zones.toml"]

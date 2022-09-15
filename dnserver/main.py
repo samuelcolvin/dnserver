@@ -89,6 +89,7 @@ class Resolver(ProxyResolver):
     def __init__(self, zones_file: str | Path, upstream: str):
         records = load_records(zones_file)
         self.records = [Record(zone) for zone in records.zones]
+        logger.info('loaded %d zone record from %s', len(self.records), zones_file)
         super().__init__(address=upstream, port=53, timeout=5)
 
     def resolve(self, request, handler):
