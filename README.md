@@ -5,8 +5,8 @@ Simple DNS server written in python for use in development and testing.
 The DNS serves its own records, if none are found it proxies the request to an upstream DNS server
 eg. CloudFlare at [`1.1.1.1`](https://1.1.1.1/).
 
-You can set up records you want to serve with a custom `zones.txt` file,
-see [example_zones.txt](example_zones.txt) for the format.
+You can set up records you want to serve with a custom `zones.toml` file,
+see [example_zones.toml](example_zones.toml) for the format.
 
 To use with docker:
 
@@ -16,9 +16,9 @@ To use with docker:
 
 Or with a custom zone file
 
-    docker run -p 5053:53/udp -v `pwd`/zones.txt:/zones/zones.txt --rm samuelcolvin/dnserver
+    docker run -p 5053:53/udp -v `pwd`/zones.toml:/zones/zones.toml --rm samuelcolvin/dnserver
 
-(assuming you have your zone records at `./zones.txt`,
+(assuming you have your zone records at `./zones.toml`,
 TCP isn't required to use `dig`, hence why it's omitted in this case.)
 
 Or see [docker-compose.yml](docker-compose.yml) for example of using dnserver with docker compose.
@@ -59,6 +59,6 @@ tutorcruncher.com.	299	IN	MX	10 aspmx3.googlemail.com.
 ;; MSG SIZE  rcvd: 176
 ```
 
-You can see that the first query took 2ms and returned results from [example_zones.txt](example_zones.txt),
+You can see that the first query took 2ms and returned results from [example_zones.toml](example_zones.toml),
 the second query took 39ms as dnserver didn't have any records for the domain so had to proxy the query to
 the upstream DNS server.

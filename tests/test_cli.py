@@ -1,22 +1,9 @@
 import os
-from pathlib import Path
-
-import pytest
 
 from dnserver.cli import cli
 
 
-@pytest.fixture
-def tmp_working_dir(tmp_path: Path):
-    dft_working_dir = os.getcwd()
-    os.chdir(tmp_path)
-
-    yield tmp_path
-
-    os.chdir(dft_working_dir)
-
-
-def test_cli(mocker, tmp_working_dir: Path):
+def test_cli(mocker):
     calls = []
 
     class MockDNSServer:
@@ -38,13 +25,12 @@ def test_cli(mocker, tmp_working_dir: Path):
         def stop(self):
             calls.append('stop')
 
-    (tmp_working_dir / 'zones.txt').write_text('test zones_text')
     os.environ['ZONE_FILE'] = 'zones.txt'
     mocker.patch('dnserver.cli.DNSServer', new=MockDNSServer)
     mock_signal = mocker.patch('dnserver.cli.signal.signal')
     cli()
     assert calls == [
-        "init ('test zones_text',) {'port': 53, 'upstream': None}",
+        "init ('zones.txt',) {'port': 53, 'upstream': None}",
         'start',
         'is_running',
         'is_running',

@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import Any, Callable, Dict, List
 
 import pytest
@@ -36,9 +35,8 @@ def convert_answer(answer) -> Dict[str, Any]:
 @pytest.fixture(scope='session')
 def dns_resolver():
     port = 5053
-    zones_text = Path('example_zones.txt').read_text()
 
-    server = DNSServer(zones_text, port=port)
+    server = DNSServer('example_zones.toml', port=port)
     server.start()
 
     assert server.is_running
