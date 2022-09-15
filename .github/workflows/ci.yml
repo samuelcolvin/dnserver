@@ -94,4 +94,5 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - run: docker build .
+      - run: docker build . -t dnserver
+      - run: docker run --rm dnserver --help
