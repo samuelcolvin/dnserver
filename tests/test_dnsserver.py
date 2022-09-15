@@ -12,10 +12,13 @@ Resolver = Callable[[str, str], List[Dict[str, Any]]]
 
 def convert_answer(answer) -> Dict[str, Any]:
     rdtype = answer.rdtype.name
-    d = {
-        'type': rdtype,
-    }
-    if hasattr(answer, 'rname'):
+    d = {'type': rdtype}
+    if rdtype == 'MX':
+        d.update(
+            preference=answer.preference,
+            value=answer.exchange.to_text(),
+        )
+    elif rdtype == 'SOA':
         d.update(
             rname=str(answer.rname.choose_relativity()),
             mname=str(answer.mname.choose_relativity()),
@@ -33,9 +36,9 @@ def convert_answer(answer) -> Dict[str, Any]:
 @pytest.fixture(scope='session')
 def dns_resolver():
     port = 5053
-    zone = Path('example_zones.txt').read_text()
+    zones_text = Path('example_zones.txt').read_text()
 
-    server = DNSServer(port, zone, '1.1.1.1')
+    server = DNSServer(zones_text, port=port)
     server.start()
 
     assert server.is_running
@@ -54,8 +57,7 @@ def dns_resolver():
 
 
 def test_a_record(dns_resolver: Resolver):
-    answers = dns_resolver('example.com', 'A')
-    assert answers == [
+    assert dns_resolver('example.com', 'A') == [
         {
             'type': 'A',
             'value': '1.2.3.4',
@@ -64,8 +66,7 @@ def test_a_record(dns_resolver: Resolver):
 
 
 def test_cname_record(dns_resolver: Resolver):
-    answers = dns_resolver('example.com', 'CNAME')
-    assert answers == [
+    assert dns_resolver('example.com', 'CNAME') == [
         {
             'type': 'CNAME',
             'value': 'whatever.com.',
@@ -73,9 +74,28 @@ def test_cname_record(dns_resolver: Resolver):
     ]
 
 
+def test_mx_record(dns_resolver: Resolver):
+    assert dns_resolver('example.com', 'MX') == [
+        {
+            'type': 'MX',
+            'preference': 5,
+            'value': 'whatever.com.',
+        },
+        {
+            'type': 'MX',
+            'preference': 10,
+            'value': 'mx2.whatever.com.',
+        },
+        {
+            'type': 'MX',
+            'preference': 20,
+            'value': 'mx3.whatever.com.',
+        },
+    ]
+
+
 def test_proxy(dns_resolver: Resolver):
-    answers = dns_resolver('example.org', 'A')
-    assert answers == [
+    assert dns_resolver('example.org', 'A') == [
         {
             'type': 'A',
             'value': IsIP(version=4),
@@ -84,8 +104,7 @@ def test_proxy(dns_resolver: Resolver):
 
 
 def test_soa(dns_resolver: Resolver):
-    answers = dns_resolver('example.com', 'SOA')
-    assert answers == [
+    assert dns_resolver('example.com', 'SOA') == [
         {
             'type': 'SOA',
             'rname': 'dns.example.com.',

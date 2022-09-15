@@ -1,3 +1,5 @@
+from __future__ import annotations as _annotations
+
 import json
 import logging
 from datetime import datetime
@@ -35,6 +37,8 @@ TYPE_LOOKUP = {
     'TXT': (dns.TXT, QTYPE.TXT),
     'SPF': (dns.TXT, QTYPE.TXT),
 }
+DEFAULT_PORT = 53
+DEFAULT_UPSTREAM = '1.1.1.1'
 
 
 class Record:
@@ -74,9 +78,9 @@ class Record:
 
 
 class Resolver(ProxyResolver):
-    def __init__(self, zone, upstream):
+    def __init__(self, zones_text: str, upstream: str):
         super().__init__(address=upstream, port=53, timeout=5)
-        self.records = self.load_zones(zone)
+        self.records = self.load_zones(zones_text)
 
     def zone_lines(self, zone):
         current_line = ''
@@ -135,16 +139,16 @@ class Resolver(ProxyResolver):
 
 
 class DNSServer:
-    def __init__(self, port=53, zone=None, upstream=None):
-        self.port = port
-        self.upstream = upstream
-        self.zone = zone
-        self.udp_server = None
-        self.tcp_server = None
+    def __init__(self, zones_text, *, port: int | str | None = DEFAULT_PORT, upstream: str | None = DEFAULT_UPSTREAM):
+        self.zones_text = zones_text
+        self.port: int = DEFAULT_PORT if port is None else int(port)
+        self.upstream: str = DEFAULT_UPSTREAM if upstream is None else upstream
+        self.udp_server: LibDNSServer | None = None
+        self.tcp_server: LibDNSServer | None = None
 
     def start(self):
         logger.info('starting DNS server on port %d, upstream DNS server "%s"', self.port, self.upstream)
-        resolver = Resolver(self.zone, self.upstream)
+        resolver = Resolver(self.zones_text, self.upstream)
 
         self.udp_server = LibDNSServer(resolver, port=self.port)
         self.tcp_server = LibDNSServer(resolver, port=self.port, tcp=True)
