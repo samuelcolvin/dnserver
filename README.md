@@ -10,10 +10,10 @@
 Simple DNS server written in python for use in development and testing.
 
 The DNS serves its own records, if none are found it proxies the request to an upstream DNS server
-eg. CloudFlare at [`1.1.1.1`](https://1.1.1.1/).
+eg. CloudFlare at [`1.1.1.1`](https://www.cloudflare.com/learning/dns/what-is-1.1.1.1/).
 
 You can set up records you want to serve with a custom `zones.toml` file,
-see [example_zones.toml](https://github.com/samuelcolvin/dnserver/example_zones.toml) an example.
+see [example_zones.toml](https://github.com/samuelcolvin/dnserver/blob/main/example_zones.toml) an example.
 
 ## Usage with PyPI
 
@@ -82,6 +82,6 @@ tutorcruncher.com.	299	IN	MX	10 aspmx3.googlemail.com.
 ;; MSG SIZE  rcvd: 176
 ```
 
-You can see that the first query took 2ms and returned results from [example_zones.toml](example_zones.toml),
+You can see that the first query took 2ms and returned results from `example_zones.toml`,
 the second query took 39ms as dnserver didn't have any records for the domain so had to proxy the query to
 the upstream DNS server.
