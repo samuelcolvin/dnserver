@@ -17,14 +17,19 @@ def handle_sig(signum, frame):  # pragma: no cover
     raise KeyboardInterrupt
 
 
-HELP_TEXT = """\
+HELP_TEXT = f"""\
 Simple DNS server written in python for use in development and testing.
+
 See https://github.com/samuelcolvin/dnserver for more information.
+
+V{VERSION}
 """
 
 
 def cli_logic(args: list[str]) -> int:
-    parser = argparse.ArgumentParser(prog='dnserver', description=HELP_TEXT)
+    parser = argparse.ArgumentParser(
+        prog='dnserver', description=HELP_TEXT, formatter_class=argparse.RawTextHelpFormatter
+    )
     parser.add_argument(
         'zones_file',
         nargs='?',
