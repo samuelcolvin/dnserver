@@ -15,9 +15,9 @@ eg. CloudFlare at [`1.1.1.1`](https://www.cloudflare.com/learning/dns/what-is-1.
 You can set up records you want to serve with a custom `zones.toml` file,
 see [example_zones.toml](https://github.com/samuelcolvin/dnserver/blob/main/example_zones.toml) an example.
 
-## Usage with PyPI
+## Installation from PyPI
 
-Install with
+Install with:
 
 ```bash
 pip install dnserver
@@ -31,23 +31,27 @@ dnserver --help
 
 (or `python -m dnserver --help`)
 
-To serve the `example_zones.toml` file on port `5053`:
+For example, to serve a file called `my_zones.toml` file on port `5053`, run:
 
 ```bash
-dnserver --port 5053 example_zones.toml
+dnserver --port 5053 my_zones.toml
 ```
 
 ## Usage with Docker
 
 To use with docker:
 
-    docker run -p 5053:53/udp -p 5053:53/tcp --rm samuelcolvin/dnserver
+```bash
+docker run -p 5053:53/udp -p 5053:53/tcp --rm samuelcolvin/dnserver
+```
 
 (See [dnserver on hub.docker.com](https://hub.docker.com/r/samuelcolvin/dnserver/))
 
-Or with a custom zone file
+Or with a custom zone file:
 
-    docker run -p 5053:53/udp -v `pwd`/zones.toml:/zones/zones.toml --rm samuelcolvin/dnserver
+```bash
+docker run -p 5053:53/udp -v `pwd`/zones.toml:/zones/zones.toml --rm samuelcolvin/dnserver
+```
 
 (assuming you have your zone records at `./zones.toml`,
 TCP isn't required to use `dig`, hence why it's omitted in this case.)
