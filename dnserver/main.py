@@ -106,7 +106,7 @@ class Resolver(ProxyResolver):
                     args = (args_,)
                 record = Record(rname, rtype, args)
                 zones.append(record)
-                logger.info(' %2d: %s', len(zones), record)
+                # logger.info(' %2d: %s', len(zones), record)
             except Exception as e:
                 raise RuntimeError(f'Error processing line ({e.__class__.__name__}: {e}) "{line.strip()}"') from e
         logger.info('%d zone resource records generated from zone file', len(zones))
@@ -155,7 +155,9 @@ class DNSServer:
 
     def stop(self):
         self.udp_server.stop()
+        self.udp_server.server.server_close()
         self.tcp_server.stop()
+        self.tcp_server.server.server_close()
 
     @property
     def is_running(self):
