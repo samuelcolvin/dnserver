@@ -143,4 +143,4 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           push: true
-          tags: samuelcolvin/dnserver:latest samuelcolvin/dnserver:v${{ steps.check-version.outputs.VERSION }}
+          tags: samuelcolvin/dnserver:latest,samuelcolvin/dnserver:v${{ steps.check-version.outputs.VERSION }}
