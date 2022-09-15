@@ -1,13 +1,13 @@
-FROM python:3.6-alpine
-
-LABEL maintainer "s@muelcolvin.com"
-
-RUN pip install dnslib==0.9.7
+FROM python:3.10-alpine
 
 RUN mkdir /zones
-ADD ./example_zones.txt /zones/zones.txt
+ADD ./example_zones.toml /zones/zones.toml
 
-ADD ./dnserver.py /home/root/dnserver.py
+ADD ./dnserver /home/root/code/dnserver
+ADD ./pyproject.toml /home/root/code
+ADD ./LICENSE /home/root/code
+ADD ./README.md /home/root/code
+RUN pip install /home/root/code
 EXPOSE 53/tcp
 EXPOSE 53/udp
-CMD ["/home/root/dnserver.py"]
+CMD ["dnserver"]

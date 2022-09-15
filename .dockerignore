@@ -5,3 +5,5 @@
 /.coverage
 /.pytest_cache/
 /htmlcov/
+/tests/
+/.github/

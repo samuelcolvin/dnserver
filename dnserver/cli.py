@@ -18,7 +18,7 @@ def cli():
 
     port = os.getenv('PORT', 53)
     upstream = os.getenv('UPSTREAM', None)
-    zones_file = os.getenv('ZONE_FILE', '/zones/zones.txt')
+    zones_file = os.getenv('ZONE_FILE', '/zones/zones.toml')
 
     server = DNSServer(zones_file, port=port, upstream=upstream)
     server.start()
