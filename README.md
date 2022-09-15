@@ -1,12 +1,43 @@
 # dnserver
 
+[![CI](https://github.com/samuelcolvin/dnserver/workflows/CI/badge.svg?event=push)](https://github.com/samuelcolvin/dnserver/actions?query=event%3Apush+branch%3Amain+workflow%3ACI)
+[![Coverage](https://codecov.io/gh/samuelcolvin/dnserver/branch/main/graph/badge.svg)](https://codecov.io/gh/samuelcolvin/dnserver)
+[![pypi](https://img.shields.io/pypi/v/dnserver.svg)](https://pypi.python.org/pypi/dnserver)
+[![docker](https://img.shields.io/docker/image-size/samuelcolvin/dnserver?sort=date)](https://hub.docker.com/r/samuelcolvin/dnserver/)
+[![versions](https://img.shields.io/pypi/pyversions/dnserver.svg)](https://github.com/samuelcolvin/dnserver)
+[![license](https://img.shields.io/github/license/samuelcolvin/dnserver.svg)](https://github.com/samuelcolvin/dnserver/blob/main/LICENSE)
+
 Simple DNS server written in python for use in development and testing.
 
 The DNS serves its own records, if none are found it proxies the request to an upstream DNS server
 eg. CloudFlare at [`1.1.1.1`](https://1.1.1.1/).
 
 You can set up records you want to serve with a custom `zones.toml` file,
-see [example_zones.toml](example_zones.toml) for the format.
+see [example_zones.toml](https://github.com/samuelcolvin/dnserver/example_zones.toml) an example.
+
+## Usage with PyPI
+
+Install with
+
+```bash
+pip install dnserver
+```
+
+Usage:
+
+```bash
+dnserver --help
+```
+
+(or `python -m dnserver --help`)
+
+To serve the `example_zones.toml` file on port `5053`:
+
+```bash
+dnserver --port 5053 example_zones.toml
+```
+
+## Usage with Docker
 
 To use with docker:
 
@@ -20,14 +51,6 @@ Or with a custom zone file
 
 (assuming you have your zone records at `./zones.toml`,
 TCP isn't required to use `dig`, hence why it's omitted in this case.)
-
-Or see [docker-compose.yml](docker-compose.yml) for example of using dnserver with docker compose.
-It demonstrates using dnserver as the DNS server for another container which then tries to make DNS queries
-for numerous domains.
-
-To run without docker (assuming you have `dnslib==0.9.7` and python 3.6 installed):
-
-    PORT=5053 ZONE_FILE='./example_zones.txt' ./dnserver.py
 
 You can then test (either of the above) with
 
