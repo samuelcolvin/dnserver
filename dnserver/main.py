@@ -3,10 +3,11 @@ import logging
 import os
 import signal
 from datetime import datetime
+from pathlib import Path
 from textwrap import wrap
 from time import sleep
 
-from dnslib import DNSLabel, QTYPE, RR, dns
+from dnslib import QTYPE, RR, DNSLabel, dns
 from dnslib.proxy import ProxyResolver
 from dnslib.server import DNSServer as LibDNSServer
 
@@ -46,11 +47,11 @@ class Record:
 
         if self._rtype == QTYPE.SOA and len(args) == 2:
             # add sensible times to SOA
-            args += (SERIAL_NO, 3600, 3600 * 3, 3600 * 24, 3600),
+            args += ((SERIAL_NO, 3600, 3600 * 3, 3600 * 24, 3600),)
 
         if self._rtype == QTYPE.TXT and len(args) == 1 and isinstance(args[0], str) and len(args[0]) > 255:
             # wrap long TXT records as per dnslib's docs.
-            args = wrap(args[0], 255),
+            args = (wrap(args[0], 255),)
 
         if self._rtype in (QTYPE.NS, QTYPE.SOA):
             ttl = 3600 * 24
@@ -171,8 +172,8 @@ if __name__ == '__main__':
 
     port = int(os.getenv('PORT', 53))
     upstream = os.getenv('UPSTREAM', '8.8.8.8')
-    with open(os.getenv('ZONE_FILE', '/zones/zones.txt')) as fd:
-        zone = fd.read()
+    zones_file = os.getenv('ZONE_FILE', '/zones/zones.txt')
+    zone = Path(zones_file).read_text()
 
     server = DNSServer(port, zone, upstream)
     server.start()

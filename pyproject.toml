@@ -53,7 +53,6 @@ Changelog = 'https://github.com/samuelcolvin/dnserver/releases'
 [tool.pytest.ini_options]
 testpaths = 'tests'
 filterwarnings = ['error']
-asyncio_mode = 'auto'
 timeout = 10
 
 [tool.coverage.run]
@@ -76,7 +75,6 @@ max_line_length = 120
 max_complexity = 14
 inline_quotes = 'single'
 multiline_quotes = 'double'
-#ignore = ['E203', 'W503']
 
 [tool.black]
 color = true
