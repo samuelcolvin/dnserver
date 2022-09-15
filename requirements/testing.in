@@ -1,0 +1,6 @@
+coverage[toml]
+dnspython
+pytest
+pytest-mock
+pytest-sugar
+pytest-timeout

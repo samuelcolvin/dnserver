@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 import json
 import logging
 import os
@@ -9,7 +8,7 @@ from time import sleep
 
 from dnslib import DNSLabel, QTYPE, RR, dns
 from dnslib.proxy import ProxyResolver
-from dnslib.server import DNSServer as DNSServer_
+from dnslib.server import DNSServer as LibDNSServer
 
 SERIAL_NO = int((datetime.utcnow() - datetime(1970, 1, 1)).total_seconds())
 
@@ -136,7 +135,7 @@ class Resolver(ProxyResolver):
         return super().resolve(request, handler)
 
 
-class DNSServer():
+class DNSServer:
     def __init__(self, port=53, zone=None, upstream=None):
         self.port = port
         self.upstream = upstream
@@ -148,8 +147,8 @@ class DNSServer():
         logger.info('starting DNS server on port %d, upstream DNS server "%s"', self.port, self.upstream)
         resolver = Resolver(self.zone, self.upstream)
 
-        self.udp_server = DNSServer_(resolver, port=self.port)
-        self.tcp_server = DNSServer_(resolver, port=self.port, tcp=True)
+        self.udp_server = LibDNSServer(resolver, port=self.port)
+        self.tcp_server = LibDNSServer(resolver, port=self.port, tcp=True)
         self.udp_server.start_thread()
         self.tcp_server.start_thread()
 
