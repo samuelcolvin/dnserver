@@ -3,7 +3,7 @@ from typing import Any, Callable, Dict, List
 
 import pytest
 from dirty_equals import IsIP, IsPositive
-from dns.resolver import Resolver as RawResolver
+from dns.resolver import NoAnswer, Resolver as RawResolver
 
 from dnserver import DNSServer
 
@@ -116,3 +116,17 @@ def test_soa(dns_resolver: Resolver):
             'minimum': 3600,
         }
     ]
+
+
+def test_soa_higher(dns_resolver: Resolver):
+    """
+    This is testing the "found higher level SOA resource for" logic, however dnspython thinks the response
+    is wrong. I really don't know, but adding this test to enforce current behaviour.
+
+    I'd love someone who knows how DNS is supposed to work to comment on this.
+    """
+    with pytest.raises(NoAnswer) as exc_info:
+        dns_resolver('subdomain.example.com', 'SOA')
+    assert str(exc_info.value) == (
+        'The DNS response does not contain an answer to the question: subdomain.example.com. IN SOA'
+    )
