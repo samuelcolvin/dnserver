@@ -87,3 +87,11 @@ jobs:
         with:
           file: ./coverage.xml
           env_vars: PYTHON,OS
+
+  docker-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - run: docker build .
