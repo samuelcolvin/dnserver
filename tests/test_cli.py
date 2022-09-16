@@ -27,7 +27,7 @@ def test_cli(mocker):
     mock_signal = mocker.patch('dnserver.cli.signal.signal')
     assert cli_logic(['--port', '1234', 'zones.txt']) == 0
     assert calls == [
-        "init ('zones.txt',) {'port': '1234', 'upstream': None}",
+        "init ('zones.txt',) {'port': '1234', 'upstream': '1.1.1.1'}",
         'start',
         'is_running',
         'is_running',

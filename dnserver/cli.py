@@ -6,7 +6,7 @@ import signal
 import sys
 from time import sleep
 
-from .main import DNSServer, logger
+from .main import DEFAULT_UPSTREAM, DNSServer, logger
 from .version import VERSION
 
 __all__ = ('cli',)
@@ -43,11 +43,25 @@ def cli_logic(args: list[str]) -> int:
             'if omitted will use DNSERVER_UPSTREAM env var, or 1.1.1.1'
         ),
     )
+    parser.add_argument(
+        '--no-upstream',
+        action='store_true',
+        default=False,
+        help=(
+            'Disable upstream DNS server. '
+            'If set and a domain is not in the zone TOML file, the DNS server will '
+            'consider the domain is not valid. If omitted will use DNSERVER_NO_UPSTREAM env var, or False'
+        ),
+    )
     parser.add_argument('--version', action='version', version=f'%(prog)s v{VERSION}')
     parsed_args = parser.parse_args(args)
 
     port = parsed_args.port or os.getenv('DNSERVER_PORT', None)
-    upstream = parsed_args.upstream or os.getenv('DNSERVER_UPSTREAM', None)
+    no_upstream = parsed_args.no_upstream or os.getenv('DNSERVER_NO_UPSTREAM', False)
+    if no_upstream:
+        upstream = None
+    else:
+        upstream = parsed_args.upstream or os.getenv('DNSERVER_UPSTREAM', DEFAULT_UPSTREAM)
     zones_file = parsed_args.zones_file or os.getenv('DNSERVER_ZONE_FILE', None)
     if zones_file is None:
         print('no zones file specified, use --help for more information', file=sys.stderr)
