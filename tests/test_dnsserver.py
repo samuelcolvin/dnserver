@@ -128,3 +128,30 @@ def test_soa_higher(dns_resolver: Resolver):
     assert str(exc_info.value) == (
         'The DNS response does not contain an answer to the question: subdomain.example.com. IN SOA'
     )
+
+
+def test_dns_server_without_upstream():
+    port = 5054
+
+    server = DNSServer('example_zones.toml', port=port, upstream=None)
+    server.start()
+
+    resolver = RawResolver()
+    resolver.nameservers = ['127.0.0.1']
+    resolver.port = port
+
+    def resolve(name: str, type_: str) -> List[Dict[str, Any]]:
+        answers = resolver.resolve(name, type_)
+        return [convert_answer(answer) for answer in answers]
+
+    try:
+        assert resolve('example.com', 'A') == [
+            {
+                'type': 'A',
+                'value': '1.2.3.4',
+            },
+        ]
+        with pytest.raises(NoAnswer):
+            resolve('python.org', 'A')
+    finally:
+        server.stop()
