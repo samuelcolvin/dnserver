@@ -37,6 +37,20 @@ For example, to serve a file called `my_zones.toml` file on port `5053`, run:
 dnserver --port 5053 my_zones.toml
 ```
 
+## Usage with Python
+
+```python
+from dnserver import DNSServer
+
+server = DNSServer('example_zones.toml', port=5053)
+server.start()
+assert server.is_running
+
+# now you can do some requests with your favorite dns library
+
+server.stop()
+```
+
 ## Usage with Docker
 
 To use with docker:
