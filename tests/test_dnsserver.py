@@ -1,5 +1,6 @@
 from typing import Any, Callable, Dict, List
 
+import dns
 import pytest
 from dirty_equals import IsIP, IsPositive
 from dns.resolver import NoAnswer, Resolver as RawResolver
@@ -157,3 +158,31 @@ def test_dns_server_without_upstream():
             resolve('python.org', 'A')
     finally:
         server.stop()
+
+
+def test_dynamic_zone_update(dns_server: DNSServer, dns_resolver: Resolver):
+    assert dns_resolver('example.com', 'A') == [
+        {
+            'type': 'A',
+            'value': '1.2.3.4',
+        },
+    ]
+    with pytest.raises(dns.resolver.NXDOMAIN):
+        dns_resolver('another-example.org', 'A')
+
+    dns_server.stop()
+    dns_server.add_record(host='another-example.com', type='A', answer='2.3.4.5')
+    dns_server.start()
+
+    assert dns_resolver('example.com', 'A') == [
+        {
+            'type': 'A',
+            'value': '1.2.3.4',
+        },
+    ]
+    assert dns_resolver('another-example.com', 'A') == [
+        {
+            'type': 'A',
+            'value': '2.3.4.5',
+        },
+    ]

@@ -10,7 +10,7 @@ from dnslib import QTYPE, RR, DNSLabel, dns
 from dnslib.proxy import ProxyResolver as LibProxyResolver
 from dnslib.server import BaseResolver as LibBaseResolver, DNSServer as LibDNSServer
 
-from .load_records import Zone, load_records
+from .load_records import Records, Zone, load_records
 
 __all__ = 'DNSServer', 'logger'
 
@@ -107,10 +107,8 @@ def resolve(request, handler, records):
 
 
 class BaseResolver(LibBaseResolver):
-    def __init__(self, zones_file: str | Path):
-        records = load_records(zones_file)
+    def __init__(self, records: Records):
         self.records = [Record(zone) for zone in records.zones]
-        logger.info('loaded %d zone record from %s, without proxy DNS server', len(self.records), zones_file)
         super().__init__()
 
     def resolve(self, request, handler):
@@ -124,12 +122,8 @@ class BaseResolver(LibBaseResolver):
 
 
 class ProxyResolver(LibProxyResolver):
-    def __init__(self, zones_file: str | Path, upstream: str):
-        records = load_records(zones_file)
+    def __init__(self, records: Records, upstream: str):
         self.records = [Record(zone) for zone in records.zones]
-        logger.info(
-            'loaded %d zone record from %s, with %s as a proxy DNS server', len(self.records), zones_file, upstream
-        )
         super().__init__(address=upstream, port=53, timeout=5)
 
     def resolve(self, request, handler):
@@ -146,18 +140,26 @@ class DNSServer:
     def __init__(
         self, zones_file: str | Path, *, port: int | str | None = DEFAULT_PORT, upstream: str | None = DEFAULT_UPSTREAM
     ):
-        self.zones_file = zones_file
         self.port: int = DEFAULT_PORT if port is None else int(port)
         self.upstream: str | None = upstream
         self.udp_server: LibDNSServer | None = None
         self.tcp_server: LibDNSServer | None = None
 
+        self.records: Records = load_records(zones_file)
+        logger.info(
+            'loaded %d zone record from %s, with %s as a proxy DNS server',
+            len(self.records.zones),
+            zones_file,
+            upstream,
+        )
+
     def start(self):
-        logger.info('starting DNS server on port %d, upstream DNS server "%s"', self.port, self.upstream)
         if self.upstream:
-            resolver = ProxyResolver(self.zones_file, self.upstream)
+            logger.info('starting DNS server on port %d, upstream DNS server "%s"', self.port, self.upstream)
+            resolver = ProxyResolver(self.records, self.upstream)
         else:
-            resolver = BaseResolver(self.zones_file)
+            logger.info('starting DNS server on port %d, without upstream DNS server', self.port)
+            resolver = BaseResolver(self.records)
 
         self.udp_server = LibDNSServer(resolver, port=self.port)
         self.tcp_server = LibDNSServer(resolver, port=self.port, tcp=True)
@@ -173,3 +175,8 @@ class DNSServer:
     @property
     def is_running(self):
         return (self.udp_server and self.udp_server.isAlive()) or (self.tcp_server and self.tcp_server.isAlive())
+
+    def add_record(self, **kwargs):
+        zone = Zone(**kwargs)
+        self.records.zones.append(zone)
+        return zone
