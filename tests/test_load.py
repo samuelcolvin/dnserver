@@ -28,6 +28,7 @@ def test_load_records():
                     '0BAQEFAAOCAg8AMIICCgKCAgEA26JaFWZUed1qcBziAsqZ/LzTF2ASxJYuJ5sk'
                 ),
             ),
+            Zone(host='_caldavs._tcp.example.com', type='SRV', answer=[0, 1, 80, 'caldav']),
         ],
     )
 
