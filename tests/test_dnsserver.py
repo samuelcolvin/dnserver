@@ -5,7 +5,7 @@ import pytest
 from dirty_equals import IsIP, IsPositive
 from dns.resolver import NoAnswer, Resolver as RawResolver
 
-from dnserver import DNSServer
+from dnserver import DNSServer, Zone
 
 Resolver = Callable[[str, str], List[Dict[str, Any]]]
 
@@ -171,7 +171,7 @@ def test_dynamic_zone_update(dns_server: DNSServer, dns_resolver: Resolver):
         dns_resolver('another-example.org', 'A')
 
     dns_server.stop()
-    dns_server.add_record(host='another-example.com', type='A', answer='2.3.4.5')
+    dns_server.add_record(Zone(host='another-example.com', type='A', answer='2.3.4.5'))
     dns_server.start()
 
     assert dns_resolver('example.com', 'A') == [

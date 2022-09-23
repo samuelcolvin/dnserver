@@ -176,7 +176,5 @@ class DNSServer:
     def is_running(self):
         return (self.udp_server and self.udp_server.isAlive()) or (self.tcp_server and self.tcp_server.isAlive())
 
-    def add_record(self, **kwargs):
-        zone = Zone(**kwargs)
+    def add_record(self, zone: Zone):
         self.records.zones.append(zone)
-        return zone
