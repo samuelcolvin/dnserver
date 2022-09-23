@@ -33,25 +33,27 @@ def convert_answer(answer) -> Dict[str, Any]:
 
 
 @pytest.fixture(scope='session')
-def dns_resolver():
+def dns_server():
     port = 5053
 
     server = DNSServer('example_zones.toml', port=port)
     server.start()
-
     assert server.is_running
+    yield server
+    server.stop
 
+
+@pytest.fixture(scope='session')
+def dns_resolver(dns_server: DNSServer):
     resolver = RawResolver()
     resolver.nameservers = ['127.0.0.1']
-    resolver.port = port
+    resolver.port = dns_server.port
 
     def resolve(name: str, type_: str) -> List[Dict[str, Any]]:
         answers = resolver.resolve(name, type_)
         return [convert_answer(answer) for answer in answers]
 
     yield resolve
-
-    server.stop()
 
 
 def test_a_record(dns_resolver: Resolver):
