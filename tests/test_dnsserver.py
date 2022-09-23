@@ -37,7 +37,7 @@ def convert_answer(answer) -> Dict[str, Any]:
 def dns_server():
     port = 5053
 
-    server = DNSServer('example_zones.toml', port=port)
+    server = DNSServer.from_toml('example_zones.toml', port=port)
     server.start()
     assert server.is_running
     yield server
@@ -136,7 +136,7 @@ def test_soa_higher(dns_resolver: Resolver):
 def test_dns_server_without_upstream():
     port = 5054
 
-    server = DNSServer('example_zones.toml', port=port, upstream=None)
+    server = DNSServer.from_toml('example_zones.toml', port=port, upstream=None)
     server.start()
 
     resolver = RawResolver()

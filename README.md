@@ -42,7 +42,7 @@ dnserver --port 5053 my_zones.toml
 ```python
 from dnserver import DNSServer
 
-server = DNSServer('example_zones.toml', port=5053)
+server = DNSServer.from_toml('example_zones.toml', port=5053)
 server.start()
 assert server.is_running
 

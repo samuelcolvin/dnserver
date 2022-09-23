@@ -138,20 +138,26 @@ class ProxyResolver(LibProxyResolver):
 
 class DNSServer:
     def __init__(
-        self, zones_file: str | Path, *, port: int | str | None = DEFAULT_PORT, upstream: str | None = DEFAULT_UPSTREAM
+        self, records: Records | None, *, port: int | str | None = DEFAULT_PORT, upstream: str | None = DEFAULT_UPSTREAM
     ):
         self.port: int = DEFAULT_PORT if port is None else int(port)
         self.upstream: str | None = upstream
         self.udp_server: LibDNSServer | None = None
         self.tcp_server: LibDNSServer | None = None
+        self.records: Records = records if records else Records(zones=[])
 
-        self.records: Records = load_records(zones_file)
+    @classmethod
+    def from_toml(
+        cls, zones_file: str | Path, *, port: int | str | None = DEFAULT_PORT, upstream: str | None = DEFAULT_UPSTREAM
+    ) -> 'DNSServer':
+        records = load_records(zones_file)
         logger.info(
             'loaded %d zone record from %s, with %s as a proxy DNS server',
-            len(self.records.zones),
+            len(records.zones),
             zones_file,
             upstream,
         )
+        return DNSServer(records, port=port, upstream=upstream)
 
     def start(self):
         if self.upstream:
