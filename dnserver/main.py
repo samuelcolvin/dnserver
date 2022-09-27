@@ -86,6 +86,7 @@ class Record:
 
 
 def resolve(request, handler, records):
+    records = [Record(zone) for zone in records.zones]
     type_name = QTYPE[request.q.qtype]
     reply = request.reply()
     for record in records:
@@ -108,7 +109,7 @@ def resolve(request, handler, records):
 
 class BaseResolver(LibBaseResolver):
     def __init__(self, records: Records):
-        self.records = [Record(zone) for zone in records.zones]
+        self.records = records
         super().__init__()
 
     def resolve(self, request, handler):
@@ -123,7 +124,7 @@ class BaseResolver(LibBaseResolver):
 
 class ProxyResolver(LibProxyResolver):
     def __init__(self, records: Records, upstream: str):
-        self.records = [Record(zone) for zone in records.zones]
+        self.records = records
         super().__init__(address=upstream, port=53, timeout=5)
 
     def resolve(self, request, handler):

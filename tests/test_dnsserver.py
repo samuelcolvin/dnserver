@@ -170,9 +170,7 @@ def test_dynamic_zone_update(dns_server: DNSServer, dns_resolver: Resolver):
     with pytest.raises(dns.resolver.NXDOMAIN):
         dns_resolver('another-example.org', 'A')
 
-    dns_server.stop()
     dns_server.add_record(Zone(host='another-example.com', type='A', answer='2.3.4.5'))
-    dns_server.start()
 
     assert dns_resolver('example.com', 'A') == [
         {
