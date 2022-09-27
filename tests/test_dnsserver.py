@@ -184,3 +184,14 @@ def test_dynamic_zone_update(dns_server: DNSServer, dns_resolver: Resolver):
             'value': '2.3.4.5',
         },
     ]
+
+    dns_server.set_records([Zone(host='example.com', type='A', answer='4.5.6.7')])
+
+    assert dns_resolver('example.com', 'A') == [
+        {
+            'type': 'A',
+            'value': '4.5.6.7',
+        },
+    ]
+    with pytest.raises(dns.resolver.NXDOMAIN):
+        dns_resolver('another-example.org', 'A')

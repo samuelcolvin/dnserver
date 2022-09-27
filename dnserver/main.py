@@ -4,7 +4,7 @@ import logging
 from datetime import datetime
 from pathlib import Path
 from textwrap import wrap
-from typing import Any
+from typing import Any, List
 
 from dnslib import QTYPE, RR, DNSLabel, dns
 from dnslib.proxy import ProxyResolver as LibProxyResolver
@@ -185,3 +185,6 @@ class DNSServer:
 
     def add_record(self, zone: Zone):
         self.records.zones.append(zone)
+
+    def set_records(self, zones: List[Zone]):
+        self.records.zones = zones
