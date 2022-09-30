@@ -11,6 +11,10 @@ def test_cli(mocker):
             self.run_check = 0
             calls.append(f'init {args} {kwargs}')
 
+        @classmethod
+        def from_toml(cls, *args, **kwargs):
+            return cls(*args, **kwargs)
+
         def start(self):
             calls.append('start')
 

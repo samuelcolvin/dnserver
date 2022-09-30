@@ -139,13 +139,16 @@ class ProxyResolver(LibProxyResolver):
 
 class DNSServer:
     def __init__(
-        self, records: Records, *, port: int | str | None = DEFAULT_PORT, upstream: str | None = DEFAULT_UPSTREAM
+        self,
+        records: Records | None = None,
+        port: int | str | None = DEFAULT_PORT,
+        upstream: str | None = DEFAULT_UPSTREAM,
     ):
         self.port: int = DEFAULT_PORT if port is None else int(port)
         self.upstream: str | None = upstream
         self.udp_server: LibDNSServer | None = None
         self.tcp_server: LibDNSServer | None = None
-        self.records: Records = records
+        self.records: Records = records if records else Records(zones=[])
 
     @classmethod
     def from_toml(
