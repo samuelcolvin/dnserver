@@ -70,7 +70,7 @@ def cli_logic(args: list[str]) -> int:
     signal.signal(signal.SIGTERM, handle_sig)
     signal.signal(signal.SIGINT, handle_sig)
 
-    server = DNSServer(zones_file, port=port, upstream=upstream)
+    server = DNSServer.from_toml(zones_file, port=port, upstream=upstream)
     server.start()
 
     try:
