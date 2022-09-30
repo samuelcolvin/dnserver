@@ -195,3 +195,24 @@ def test_dynamic_zone_update(dns_server: DNSServer, dns_resolver: Resolver):
     ]
     with pytest.raises(dns.resolver.NXDOMAIN):
         dns_resolver('another-example.org', 'A')
+
+
+def test_no_zone_at_initialization():
+    port = 5055
+
+    server = DNSServer(port=port, upstream=None)
+    server.start()
+
+    resolver = RawResolver()
+    resolver.nameservers = ['127.0.0.1']
+    resolver.port = port
+
+    def resolve(name: str, type_: str) -> List[Dict[str, Any]]:
+        answers = resolver.resolve(name, type_)
+        return [convert_answer(answer) for answer in answers]
+
+    try:
+        with pytest.raises(NoAnswer):
+            resolve('example.com', 'A')
+    finally:
+        server.stop()
