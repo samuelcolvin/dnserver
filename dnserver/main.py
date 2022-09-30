@@ -139,7 +139,10 @@ class ProxyResolver(LibProxyResolver):
 
 class DNSServer:
     def __init__(
-        self, records: Records | None = None, port: int | str | None = DEFAULT_PORT, upstream: str | None = DEFAULT_UPSTREAM
+        self,
+        records: Records | None = None,
+        port: int | str | None = DEFAULT_PORT,
+        upstream: str | None = DEFAULT_UPSTREAM,
     ):
         self.port: int = DEFAULT_PORT if port is None else int(port)
         self.upstream: str | None = upstream
