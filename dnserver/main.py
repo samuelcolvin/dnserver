@@ -12,7 +12,7 @@ from dnslib.server import BaseResolver as LibBaseResolver, DNSServer as LibDNSSe
 
 from .load_records import Records, Zone, load_records
 
-__all__ = 'DNSServer', 'logger'
+__all__ = 'DNSServer', 'logger', 'DEFAULT_TTL', 'DEFAULT_TTL_NS_SOA'
 
 SERIAL_NO = int((datetime.utcnow() - datetime(1970, 1, 1)).total_seconds())
 
@@ -42,6 +42,8 @@ TYPE_LOOKUP = {
 }
 DEFAULT_PORT = 53
 DEFAULT_UPSTREAM = '1.1.1.1'
+DEFAULT_TTL = 300
+DEFAULT_TTL_NS_SOA = 3600 * 24
 
 
 class Record:
@@ -64,9 +66,12 @@ class Record:
                 args = zone.answer
 
         if self._rtype in (QTYPE.NS, QTYPE.SOA):
-            ttl = 3600 * 24
+            ttl = DEFAULT_TTL_NS_SOA
         else:
-            ttl = 300
+            ttl = DEFAULT_TTL
+
+        if zone.ttl:
+            ttl = zone.ttl
 
         self.rr = RR(
             rname=self._rname,
