@@ -8,16 +8,16 @@ def test_load_records():
     records = load_records('example_zones.toml')
     assert records == Records(
         zones=[
-            Zone(host='example.com', type='A', answer='1.2.3.4'),
-            Zone(host='example.com', type='A', answer='1.2.3.4'),
-            Zone(host='example.com', type='CNAME', answer='whatever.com'),
-            Zone(host='example.com', type='MX', answer=['whatever.com.', 5]),
-            Zone(host='example.com', type='MX', answer=['mx2.whatever.com.', 10]),
-            Zone(host='example.com', type='MX', answer=['mx3.whatever.com.', 20]),
-            Zone(host='example.com', type='NS', answer='ns1.whatever.com.'),
-            Zone(host='example.com', type='NS', answer='ns2.whatever.com.'),
-            Zone(host='example.com', type='TXT', answer='hello this is some text'),
-            Zone(host='example.com', type='SOA', answer=['ns1.example.com', 'dns.example.com']),
+            Zone(host='example.com', type='A', answer='1.2.3.4', ttl=None),
+            Zone(host='example.com', type='A', answer='1.2.3.4', ttl=1),
+            Zone(host='example.com', type='CNAME', answer='whatever.com', ttl=None),
+            Zone(host='example.com', type='MX', answer=['whatever.com.', 5], ttl=3600),
+            Zone(host='example.com', type='MX', answer=['mx2.whatever.com.', 10], ttl=None),
+            Zone(host='example.com', type='MX', answer=['mx3.whatever.com.', 20], ttl=None),
+            Zone(host='example.com', type='NS', answer='ns1.whatever.com.', ttl=None),
+            Zone(host='example.com', type='NS', answer='ns2.whatever.com.', ttl=None),
+            Zone(host='example.com', type='TXT', answer='hello this is some text', ttl=None),
+            Zone(host='example.com', type='SOA', answer=['ns1.example.com', 'dns.example.com'], ttl=None),
             Zone(
                 host='testing.com',
                 type='TXT',
@@ -27,8 +27,9 @@ def test_load_records():
                     'Qbh9akm2bkNw5DC5a8Slp7j+eEVHkgV3k3oRhkPcrKyoPVvniDNH+Ln7DnSGC+Aw5Sp+fhu5aZmoODhhX5/1mANBgkqhkiG9w'
                     '0BAQEFAAOCAg8AMIICCgKCAgEA26JaFWZUed1qcBziAsqZ/LzTF2ASxJYuJ5sk'
                 ),
+                ttl=None
             ),
-            Zone(host='_caldavs._tcp.example.com', type='SRV', answer=[0, 1, 80, 'caldav']),
+            Zone(host='_caldavs._tcp.example.com', type='SRV', answer=[0, 1, 80, 'caldav'], ttl=None),
         ],
     )
 

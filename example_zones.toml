@@ -8,6 +8,7 @@ answer = '1.2.3.4'
 host = 'example.com'
 type = 'A'
 answer = '1.2.3.4'
+ttl = 1
 
 [[zones]]
 host = 'example.com'
@@ -18,6 +19,7 @@ answer = 'whatever.com'
 host = 'example.com'
 type = 'MX'
 answer = ['whatever.com.', 5]
+ttl = 3600
 
 [[zones]]
 host = 'example.com'

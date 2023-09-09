@@ -5,7 +5,7 @@ import pytest
 from dirty_equals import IsIP, IsPositive
 from dns.resolver import NoAnswer, Resolver as RawResolver
 
-from dnserver import DNSServer, Zone
+from dnserver import DNSServer, Zone, DEFAULT_TTL, DEFAULT_TTL_NS_SOA
 
 Resolver = Callable[[str, str], List[Dict[str, Any]]]
 
@@ -52,7 +52,11 @@ def dns_resolver(dns_server: DNSServer):
 
     def resolve(name: str, type_: str) -> List[Dict[str, Any]]:
         answers = resolver.resolve(name, type_)
-        return [convert_answer(answer) for answer in answers]
+        ttl = answers.rrset.ttl
+        answers = [convert_answer(answer) for answer in answers]
+        for answer in answers:
+            answer['ttl'] = ttl
+        return answers
 
     yield resolve
 
@@ -62,6 +66,7 @@ def test_a_record(dns_resolver: Resolver):
         {
             'type': 'A',
             'value': '1.2.3.4',
+            'ttl': 1
         },
     ]
 
@@ -71,6 +76,7 @@ def test_cname_record(dns_resolver: Resolver):
         {
             'type': 'CNAME',
             'value': 'whatever.com.',
+            'ttl': DEFAULT_TTL
         },
     ]
 
@@ -81,16 +87,19 @@ def test_mx_record(dns_resolver: Resolver):
             'type': 'MX',
             'preference': 5,
             'value': 'whatever.com.',
+            'ttl': DEFAULT_TTL
         },
         {
             'type': 'MX',
             'preference': 10,
             'value': 'mx2.whatever.com.',
+            'ttl': DEFAULT_TTL
         },
         {
             'type': 'MX',
             'preference': 20,
             'value': 'mx3.whatever.com.',
+            'ttl': DEFAULT_TTL
         },
     ]
 
@@ -100,6 +109,7 @@ def test_proxy(dns_resolver: Resolver):
         {
             'type': 'A',
             'value': IsIP(version=4),
+            'ttl': IsPositive()
         },
     ]
 
@@ -115,6 +125,7 @@ def test_soa(dns_resolver: Resolver):
             'retry': 10800,
             'expire': 86400,
             'minimum': 3600,
+            'ttl': DEFAULT_TTL_NS_SOA
         }
     ]
 
@@ -165,6 +176,7 @@ def test_dynamic_zone_update(dns_server: DNSServer, dns_resolver: Resolver):
         {
             'type': 'A',
             'value': '1.2.3.4',
+            'ttl': 1
         },
     ]
     with pytest.raises(dns.resolver.NXDOMAIN):
@@ -176,21 +188,24 @@ def test_dynamic_zone_update(dns_server: DNSServer, dns_resolver: Resolver):
         {
             'type': 'A',
             'value': '1.2.3.4',
+            'ttl': 1
         },
     ]
     assert dns_resolver('another-example.com', 'A') == [
         {
             'type': 'A',
             'value': '2.3.4.5',
+            'ttl': DEFAULT_TTL
         },
     ]
 
-    dns_server.set_records([Zone(host='example.com', type='A', answer='4.5.6.7')])
+    dns_server.set_records([Zone(host='example.com', type='A', answer='4.5.6.7', ttl=321)])
 
     assert dns_resolver('example.com', 'A') == [
         {
             'type': 'A',
             'value': '4.5.6.7',
+            'ttl': 321
         },
     ]
     with pytest.raises(dns.resolver.NXDOMAIN):

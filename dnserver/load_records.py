@@ -4,7 +4,7 @@ import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 try:
     from typing import Literal
@@ -24,11 +24,11 @@ class Zone:
     host: str
     type: RecordType
     answer: str | list[str | int]
-    # TODO we could add ttl and other args here if someone wanted it
+    ttl: Optional[int] = None
 
     @classmethod
     def from_raw(cls, index: int, data: Any) -> Zone:
-        if not isinstance(data, dict) or data.keys() != {'host', 'type', 'answer'}:
+        if not isinstance(data, dict) or len([key for key in data.keys() if key in ['host', 'type', 'answer']]) != 3:
             raise ValueError(
                 f'Zone {index} is not a valid dict, must have keys "host", "type" and "answer", got {data!r}'
             )
@@ -49,7 +49,14 @@ class Zone:
                 f'Zone {index} is invalid, "answer" must be a string or list of strings and ints, got {data!r}'
             )
 
-        return cls(host, type_, answer)
+        ttl = None
+        if 'ttl' in data:
+            if isinstance(data['ttl'], int):
+                ttl = data['ttl']
+            else:
+                raise ValueError(f'Zone {index} is invalid, "ttl" must be an int, got {data["ttl"]}')
+
+        return cls(host, type_, answer, ttl)
 
 
 @dataclass
