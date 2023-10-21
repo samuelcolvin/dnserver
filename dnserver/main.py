@@ -4,7 +4,8 @@ import logging
 from datetime import datetime
 from pathlib import Path
 from textwrap import wrap
-from typing import Any, List
+from typing import Any, List, Generic, TypeVar
+from threading import Lock
 
 from dnslib import QTYPE, RR, DNSLabel, dns, DNSRecord
 from dnslib.proxy import ProxyResolver as LibProxyResolver
@@ -85,12 +86,36 @@ class Record:
         return str(self.rr)
 
 
+T = TypeVar('T')
+
+
+class SharedObject(Generic[T]):
+    def __init__(self, obj: T, lock: Lock = None) -> None:
+        self._obj = obj
+        self.lock = lock or Lock()
+
+    def __enter__(self):
+        self.lock.acquire()
+        return self._obj
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.lock.release()
+
+    def set(self, obj: T):
+        with self:
+            self._obj = obj
+
+
 class BaseRecordsResolver(object):
-    def __init__(self, records: Records):
-        self.records = records
+    def __init__(self, records: SharedObject[Records]):
+        self._records = records
+
+    def records(self):
+        with self._records as records:
+            return [Record(zone) for zone in records.zones]
 
     def resolve(self, request: DNSRecord, handler: DNSHandler):
-        records = [Record(zone) for zone in self.records.zones]
+        records = self.records()
         type_name = QTYPE[request.q.qtype]
         reply = request.reply()
         for record in records:
@@ -136,7 +161,7 @@ class ProxyResolver(BaseRecordsResolver, LibProxyResolver):
 class DNSServer:
     def __init__(
         self,
-        records: Records | None = None,
+        records: Records | SharedObject[Records] | None = None,
         port: int | str | None = DEFAULT_PORT,
         upstream: str | None = DEFAULT_UPSTREAM,
     ):
@@ -144,7 +169,9 @@ class DNSServer:
         self.upstream: str | None = upstream
         self.udp_server: LibDNSServer | None = None
         self.tcp_server: LibDNSServer | None = None
-        self.records: Records = records if records else Records(zones=[])
+        self.records: SharedObject[Records] = records if records else Records(zones=[])
+        if not isinstance(self.records, SharedObject):
+            self.records = SharedObject(self.records)
 
     @classmethod
     def from_toml(
@@ -183,7 +210,9 @@ class DNSServer:
         return (self.udp_server and self.udp_server.isAlive()) or (self.tcp_server and self.tcp_server.isAlive())
 
     def add_record(self, zone: Zone):
-        self.records.zones.append(zone)
+        with self.records as records:
+            records.zones.append(zone)
 
     def set_records(self, zones: List[Zone]):
-        self.records.zones = zones
+        with self.records as records:
+            records.zones = zones
