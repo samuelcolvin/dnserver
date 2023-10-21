@@ -231,7 +231,7 @@ class BaseDNSServer(Generic[R]):
             if len(resolvers) > 1:
                 self.resolver = RoundRobinResolver(resolvers)
             else:
-                self.resolver = resolvers
+                self.resolver = resolvers[0]
 
         if not isinstance(self.resolver, LibBaseResolver):
             raise ValueError(self.resolver)
