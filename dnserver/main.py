@@ -140,8 +140,8 @@ class RecordsResolver(LibBaseResolver):
 
 
 class ProxyResolver(LibProxyResolver):
-    def __init__(self, upstream: str, port=53, timeout=5):
-        super().__init__(address=upstream, port=port, timeout=timeout)
+    def __init__(self, upstream: str, port=DEFAULT_PORT, timeout=5):
+        super().__init__(address=upstream, port=int(port or DEFAULT_PORT), timeout=int(timeout or 5))
 
     def resolve(self, request: DNSRecord, handler: DNSHandler):
         type_name = QTYPE[request.q.qtype]
