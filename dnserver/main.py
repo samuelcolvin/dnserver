@@ -6,9 +6,9 @@ from pathlib import Path
 from textwrap import wrap
 from typing import Any, List
 
-from dnslib import QTYPE, RR, DNSLabel, dns
+from dnslib import QTYPE, RR, DNSLabel, dns, DNSRecord
 from dnslib.proxy import ProxyResolver as LibProxyResolver
-from dnslib.server import BaseResolver as LibBaseResolver, DNSServer as LibDNSServer
+from dnslib.server import BaseResolver as LibBaseResolver, DNSServer as LibDNSServer, DNSHandler
 
 from .load_records import Records, Zone, load_records
 
@@ -85,56 +85,52 @@ class Record:
         return str(self.rr)
 
 
-def resolve(request, handler, records):
-    records = [Record(zone) for zone in records.zones]
-    type_name = QTYPE[request.q.qtype]
-    reply = request.reply()
-    for record in records:
-        if record.match(request.q):
-            reply.add_answer(record.rr)
-
-    if reply.rr:
-        logger.info('found zone for %s[%s], %d replies', request.q.qname, type_name, len(reply.rr))
-        return reply
-
-    # no direct zone so look for an SOA record for a higher level zone
-    for record in records:
-        if record.sub_match(request.q):
-            reply.add_answer(record.rr)
-
-    if reply.rr:
-        logger.info('found higher level SOA resource for %s[%s]', request.q.qname, type_name)
-        return reply
-
-
-class BaseResolver(LibBaseResolver):
+class BaseRecordsResolver(object):
     def __init__(self, records: Records):
         self.records = records
-        super().__init__()
 
-    def resolve(self, request, handler):
-        answer = resolve(request, handler, self.records)
-        if answer:
-            return answer
-
+    def resolve(self, request: DNSRecord, handler: DNSHandler):
+        records = [Record(zone) for zone in self.records.zones]
         type_name = QTYPE[request.q.qtype]
-        logger.info('no local zone found, not proxying %s[%s]', request.q.qname, type_name)
+        reply = request.reply()
+        for record in records:
+            if record.match(request.q):
+                reply.add_answer(record.rr)
+
+        if reply.rr:
+            logger.info('found zone for %s[%s], %d replies', request.q.qname, type_name, len(reply.rr))
+            return reply
+
+        # no direct zone so look for an SOA record for a higher level zone
+        for record in records:
+            if record.sub_match(request.q):
+                reply.add_answer(record.rr)
+
+        if reply.rr:
+            logger.info('found higher level SOA resource for %s[%s]', request.q.qname, type_name)
+            return reply
+
+        logger.info('no local zone found %s[%s]', request.q.qname, type_name)
         return request.reply()
 
 
-class ProxyResolver(LibProxyResolver):
+class RecordsResolver(BaseRecordsResolver, LibBaseResolver):
+    ...
+
+
+class ProxyResolver(BaseRecordsResolver, LibProxyResolver):
     def __init__(self, records: Records, upstream: str):
-        self.records = records
-        super().__init__(address=upstream, port=53, timeout=5)
+        BaseRecordsResolver.__init__(self, records)
+        LibProxyResolver.__init__(self, address=upstream, port=53, timeout=5)
 
     def resolve(self, request, handler):
-        answer = resolve(request, handler, self.records)
-        if answer:
+        answer = BaseRecordsResolver.resolve(self, request, handler)
+        if answer.rr:
             return answer
 
         type_name = QTYPE[request.q.qtype]
-        logger.info('no local zone found, proxying %s[%s]', request.q.qname, type_name)
-        return super().resolve(request, handler)
+        logger.info('proxying %s[%s]', request.q.qname, type_name)
+        return LibProxyResolver.resolve(self, request, handler)
 
 
 class DNSServer:
@@ -169,7 +165,7 @@ class DNSServer:
             resolver = ProxyResolver(self.records, self.upstream)
         else:
             logger.info('starting DNS server on port %d, without upstream DNS server', self.port)
-            resolver = BaseResolver(self.records)
+            resolver = RecordsResolver(self.records)
 
         self.udp_server = LibDNSServer(resolver, port=self.port)
         self.tcp_server = LibDNSServer(resolver, port=self.port, tcp=True)
