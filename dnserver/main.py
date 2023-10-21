@@ -143,19 +143,27 @@ class RecordsResolver(BaseRecordsResolver, LibBaseResolver):
     ...
 
 
-class ProxyResolver(BaseRecordsResolver, LibProxyResolver):
-    def __init__(self, records: Records, upstream: str):
-        BaseRecordsResolver.__init__(self, records)
-        LibProxyResolver.__init__(self, address=upstream, port=53, timeout=5)
+class ProxyResolver(LibProxyResolver):
+    def __init__(self, upstream: str):
+        super().__init__(address=upstream, port=53, timeout=5)
 
-    def resolve(self, request, handler):
-        answer = BaseRecordsResolver.resolve(self, request, handler)
-        if answer.rr:
-            return answer
-
+    def resolve(self, request: DNSRecord, handler: DNSHandler):
         type_name = QTYPE[request.q.qtype]
         logger.info('proxying %s[%s]', request.q.qname, type_name)
-        return LibProxyResolver.resolve(self, request, handler)
+        return super().resolve(request, handler)
+
+
+class RoundRobinResolver(LibBaseResolver):
+    def __init__(self, resolvers: list[LibBaseResolver]):
+        self.resolvers = resolvers
+
+    def resolve(self, request: DNSRecord, handler: DNSHandler):
+        answer = request.reply()
+        for resolver in self.resolvers:
+            answer: DNSRecord = resolver.resolve(request, handler)
+            if answer.header.rcode == 0 and answer.rr:
+                return answer
+        return answer
 
 
 class DNSServer:
@@ -187,12 +195,13 @@ class DNSServer:
         return DNSServer(records, port=port, upstream=upstream)
 
     def start(self):
+        resolver = resolver = RecordsResolver(self.records)
+
         if self.upstream:
             logger.info('starting DNS server on port %d, upstream DNS server "%s"', self.port, self.upstream)
-            resolver = ProxyResolver(self.records, self.upstream)
+            resolver = RoundRobinResolver([resolver, ProxyResolver(self.upstream)])
         else:
             logger.info('starting DNS server on port %d, without upstream DNS server', self.port)
-            resolver = RecordsResolver(self.records)
 
         self.udp_server = LibDNSServer(resolver, port=self.port)
         self.tcp_server = LibDNSServer(resolver, port=self.port, tcp=True)
