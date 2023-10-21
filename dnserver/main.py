@@ -4,7 +4,7 @@ import logging
 from datetime import datetime
 from pathlib import Path
 from textwrap import wrap
-from typing import Any, List, Generic, TypeVar
+from typing import Any, List, Generic, TypeVar, overload, TypeVarTuple
 from threading import Lock
 
 from dnslib import QTYPE, RR, DNSLabel, dns, DNSRecord
@@ -106,7 +106,7 @@ class SharedObject(Generic[T]):
             self._obj = obj
 
 
-class BaseRecordsResolver(object):
+class RecordsResolver(LibBaseResolver):
     def __init__(self, records: SharedObject[Records]):
         self._records = records
 
@@ -139,13 +139,9 @@ class BaseRecordsResolver(object):
         return request.reply()
 
 
-class RecordsResolver(BaseRecordsResolver, LibBaseResolver):
-    ...
-
-
 class ProxyResolver(LibProxyResolver):
-    def __init__(self, upstream: str):
-        super().__init__(address=upstream, port=53, timeout=5)
+    def __init__(self, upstream: str, port=53, timeout=5):
+        super().__init__(address=upstream, port=port, timeout=timeout)
 
     def resolve(self, request: DNSRecord, handler: DNSHandler):
         type_name = QTYPE[request.q.qtype]
@@ -153,12 +149,17 @@ class ProxyResolver(LibProxyResolver):
         return super().resolve(request, handler)
 
 
-class RoundRobinResolver(LibBaseResolver):
-    def __init__(self, resolvers: list[LibBaseResolver]):
-        self.resolvers = resolvers
+R = TypeVar('R', bound=LibBaseResolver)
+TR = TypeVarTuple('TR')
+
+
+class RoundRobinResolver(LibBaseResolver, Generic[*TR]):
+    def __init__(self, resolvers: tuple[*TR]):
+        self.resolvers = tuple(resolvers)
 
     def resolve(self, request: DNSRecord, handler: DNSHandler):
         answer = request.reply()
+        resolver: LibBaseResolver
         for resolver in self.resolvers:
             answer: DNSRecord = resolver.resolve(request, handler)
             if answer.header.rcode == 0 and answer.rr:
@@ -166,20 +167,84 @@ class RoundRobinResolver(LibBaseResolver):
         return answer
 
 
-class DNSServer:
+class BaseDNSServer(Generic[R]):
+    resolver: R
+
+    @overload
+    def __new__(self, resolver: R, port: int | None = None) -> BaseDNSServer[R]:
+        ...
+
+    @overload
+    def __new__(self, resolver: str, port: int | None = None) -> BaseDNSServer[RoundRobinResolver | ProxyResolver]:
+        ...
+
+    @overload
+    def __new__(
+        self, resolver: Records | SharedObject[Records] | None = None, port: int | None = None
+    ) -> BaseDNSServer[RecordsResolver]:
+        ...
+
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls)
+
+    def __init__(self, resolver: R | Records | SharedObject[Records] | str | None = None, port: int | None = None):
+        self.port: int = DEFAULT_PORT if port is None else int(port)
+        self.servers: list[LibDNSServer] = []
+        self.resolver = resolver or Records(zones=[])
+        if isinstance(self.resolver, Records):
+            self.resolver = SharedObject(self.resolver)
+        if isinstance(self.resolver, SharedObject):
+            self.resolver = RecordsResolver(self.resolver)
+        if isinstance(self.resolver, str):
+            resolvers = [ProxyResolver(*upstream.split(":")) for upstream in resolver.split(',')]
+            if len(resolvers) > 1:
+                self.resolver = RoundRobinResolver(resolvers)
+            else:
+                self.resolver = resolvers
+
+        if not isinstance(self.resolver, LibBaseResolver):
+            raise ValueError(self.resolver)
+
+    def start(self):
+        for port, tcp in [(self.port, False), (self.port, True)]:
+            logger.info('starting DNS server on port %d protocol: %s"', port, 'tcp' if tcp else 'udp')
+            server = LibDNSServer(self.resolver, port=self.port)
+            server.start_thread()
+            self.servers.append(server)
+
+    def stop(self):
+        for server in self.servers:
+            server.stop()
+            server.server.server_close()
+        self.servers = []
+
+    @property
+    def is_running(self):
+        for server in self.servers:
+            if server.isAlive():
+                return True
+        return False
+
+
+class DNSServer(BaseDNSServer[RoundRobinResolver[RecordsResolver, ProxyResolver] | RecordsResolver]):
+    def __new__(cls, *args, **kwargs) -> 'DNSServer':
+        return super().__new__(cls)
+
     def __init__(
         self,
         records: Records | SharedObject[Records] | None = None,
         port: int | str | None = DEFAULT_PORT,
         upstream: str | None = DEFAULT_UPSTREAM,
     ):
-        self.port: int = DEFAULT_PORT if port is None else int(port)
-        self.upstream: str | None = upstream
-        self.udp_server: LibDNSServer | None = None
-        self.tcp_server: LibDNSServer | None = None
-        self.records: SharedObject[Records] = records if records else Records(zones=[])
-        if not isinstance(self.records, SharedObject):
-            self.records = SharedObject(self.records)
+        super().__init__(records, port)
+        self.records: SharedObject[Records] = self.resolver._records
+        if upstream:
+            logger.info('starting DNS server on port %d, upstream DNS server "%s"', self.port, upstream)
+            self.resolver = RoundRobinResolver(
+                [self.resolver, *[ProxyResolver(*upstream.split(":")) for upstream in upstream.split(',')]]
+            )
+        else:
+            logger.info('starting DNS server on port %d, without upstream DNS server', self.port)
 
     @classmethod
     def from_toml(
@@ -193,30 +258,6 @@ class DNSServer:
             upstream,
         )
         return DNSServer(records, port=port, upstream=upstream)
-
-    def start(self):
-        resolver = resolver = RecordsResolver(self.records)
-
-        if self.upstream:
-            logger.info('starting DNS server on port %d, upstream DNS server "%s"', self.port, self.upstream)
-            resolver = RoundRobinResolver([resolver, ProxyResolver(self.upstream)])
-        else:
-            logger.info('starting DNS server on port %d, without upstream DNS server', self.port)
-
-        self.udp_server = LibDNSServer(resolver, port=self.port)
-        self.tcp_server = LibDNSServer(resolver, port=self.port, tcp=True)
-        self.udp_server.start_thread()
-        self.tcp_server.start_thread()
-
-    def stop(self):
-        self.udp_server.stop()
-        self.udp_server.server.server_close()
-        self.tcp_server.stop()
-        self.tcp_server.server.server_close()
-
-    @property
-    def is_running(self):
-        return (self.udp_server and self.udp_server.isAlive()) or (self.tcp_server and self.tcp_server.isAlive())
 
     def add_record(self, zone: Zone):
         with self.records as records:
