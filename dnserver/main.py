@@ -120,7 +120,7 @@ class DNSServer(BaseDNSServer[RoundRobinResolver[RecordsResolver, ForwarderResol
             LOGGER.info('without upstream DNS server')
 
     @classmethod
-    def from_toml(
+    def from_file(
         cls, zones_file: str | Path, *, port: int | str | None = DEFAULT_PORT, upstream: str | None = DEFAULT_UPSTREAM
     ) -> 'DNSServer':
         config = Config.load(zones_file)
