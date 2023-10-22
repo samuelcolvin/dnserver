@@ -98,7 +98,7 @@ class BaseDNSServer(Generic[R]):
 
     @property
     def port(self):
-        return next(self.servers.keys().__iter__())[0]
+        return next(iter(self.servers.keys()))[0]
 
 
 class DNSServer(BaseDNSServer[RoundRobinResolver[RecordsResolver, ForwarderResolver] | RecordsResolver]):
