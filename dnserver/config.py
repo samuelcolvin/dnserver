@@ -1,9 +1,9 @@
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import BinaryIO, List, Callable, OrderedDict
-from .common import Zone, Record, Records, _Self, DEFAULT
+from typing import BinaryIO, Callable, OrderedDict
 
+from .common import DEFAULT, Record, Records, Zone, _Self
 
 __all__ = 'Config'
 
@@ -44,12 +44,12 @@ def _all_parser(file: BinaryIO):
 
 @dataclass
 class Config:
-    zones: List[Zone]
+    zones: 'list[Zone]'
     port: int = None
-    upstream: str | List[str] = DEFAULT
+    upstream: 'str | list[str]' = DEFAULT
 
     @classmethod
-    def load(cls, zones_file: str | Path, format: str = None) -> _Self:
+    def load(cls, zones_file: 'str | Path', format: str = None) -> _Self:
         file = Path(zones_file)
         config = None
         if not format:
@@ -68,7 +68,7 @@ class Config:
 
         if not isinstance(zones, list):
             raise ValueError(f'Zones must be a list, not {type(zones).__name__}')
-        
+
         config['zones'] = [Zone.from_raw(i, zone) for i, zone in enumerate(zones, start=1)]
 
         return cls(**config)
