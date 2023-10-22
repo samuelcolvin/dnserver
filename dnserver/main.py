@@ -5,7 +5,7 @@ from datetime import datetime
 from pathlib import Path
 from textwrap import wrap
 from types import NoneType
-from typing import Any, List, Generic, TypeVar, overload, TypeVarTuple, Iterable, TypeAlias, Sequence
+from typing import Any, List, Generic, TypeVar, overload, TypeVarTuple, Iterable, TypeAlias, Sequence, Tuple
 from threading import Lock
 
 from dnslib import QTYPE, RR, DNSLabel, dns, DNSRecord
@@ -154,8 +154,8 @@ R = TypeVar('R', bound=LibBaseResolver)
 TR = TypeVarTuple('TR')
 
 
-class RoundRobinResolver(LibBaseResolver, Generic[*TR]):
-    def __init__(self, resolvers: tuple[*TR]):
+class RoundRobinResolver(LibBaseResolver, Generic[R]):
+    def __init__(self, resolvers: Tuple[R]):
         self.resolvers = tuple(resolvers)
 
     def resolve(self, request: DNSRecord, handler: DNSHandler):
