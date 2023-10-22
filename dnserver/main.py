@@ -5,7 +5,7 @@ from pathlib import Path
 from types import NoneType
 from typing import Any, List, Generic, overload, Iterable, TypeAlias, Sequence, NamedTuple
 
-from dnslib.server import BaseResolver as LibBaseResolver, DNSServer as LibDNSServer
+from dnslib.server import DNSServer as LibDNSServer
 from enum import Flag, auto, STRICT
 from urllib.parse import urlparse
 
@@ -113,7 +113,7 @@ class DNSServer(Generic[R]):
             self.resolver = RecordsResolver(self.resolver)
         if isinstance(self.resolver, str):
             self.resolver = ForwarderResolver(self.resolver)
-        if not isinstance(self.resolver, LibBaseResolver):
+        if not isinstance(self.resolver, BaseResolver):
             raise ValueError(self.resolver)
 
     def start(self):
