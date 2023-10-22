@@ -1,4 +1,4 @@
-from enum import STRICT, Flag, auto
+from enum import Flag, auto
 from pathlib import Path
 from typing import Generic, Iterable, NamedTuple, Union, overload
 from urllib.parse import urlparse
@@ -11,8 +11,17 @@ from .resolver import BaseResolver, ForwarderResolver, R, RecordsResolver, Round
 
 __all__ = 'SimpleDNSServer', 'DNSServer'
 
+extras_args = {}
 
-class IPProto(Flag, boundary=STRICT):
+try:
+    from enum import STRICT
+
+    extras_args['boundary'] = STRICT
+except ImportError:
+    pass
+
+
+class IPProto(Flag, **extras_args):
     UDP = auto()
     TCP = auto()
     BOTH = TCP | UDP
