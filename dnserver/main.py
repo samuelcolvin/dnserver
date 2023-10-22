@@ -3,9 +3,11 @@ from __future__ import annotations as _annotations
 import logging
 from pathlib import Path
 from types import NoneType
-from typing import Any, List, Generic, overload, Iterable, TypeAlias, Sequence
+from typing import Any, List, Generic, overload, Iterable, TypeAlias, Sequence, NamedTuple
 
 from dnslib.server import BaseResolver as LibBaseResolver, DNSServer as LibDNSServer
+from enum import Flag, auto, STRICT
+from urllib.parse import urlparse
 
 from .config import Config
 from .resolver import BaseResolver, RecordsResolver, ForwarderResolver, RoundRobinResolver, R, Records
@@ -17,12 +19,53 @@ DEFAULT_UPSTREAM = '1.1.1.1'
 Port: TypeAlias = tuple[int, bool]
 
 
-def _ports(obj):
-    if isinstance(obj, Sequence):
-        if len(obj) == 2 and isinstance(obj[1], (bool, NoneType)):
-            return (obj[0], obj[1])
-        return None
-    return (obj, None)
+class IPProto(Flag, boundary=STRICT):
+    UDP = auto()
+    TCP = auto()
+    BOTH = TCP | UDP
+
+
+class IPBind(NamedTuple):
+    address: str
+    port: int | None
+    proto: IPProto
+
+    @classmethod
+    def parse(
+        cls,
+        address: str,
+        port: str | int = None,
+        proto: str | IPProto = None,
+        /,
+        default_port=0,
+        default_address='0.0.0.0',
+        default_proto=IPProto.BOTH,
+    ):
+        if not address:
+            address = ''
+        try:
+            _port = int(address)
+            address = f'{default_address}:{_port}'
+        except:
+            pass
+        address = str(address or default_address)
+        if '://' not in address:
+            address = 'none://' + address
+        parsed = urlparse(address)
+        address = parsed.hostname or default_address
+        if port is None:
+            port = parsed.port or default_port
+        if proto is None and parsed.scheme != 'none':
+            proto = parsed.scheme
+        if proto is None:
+            proto = default_proto
+        if not isinstance(proto, IPProto):
+            proto = proto.upper()
+            if proto in IPProto:
+                proto = IPProto[proto]
+            else:
+                raise ValueError(proto)
+        return cls(address, int(port), proto)
 
 
 class DNSServer(Generic[R]):
@@ -50,20 +93,18 @@ class DNSServer(Generic[R]):
     def __init__(
         self,
         resolver: R | Records | SharedObject[Records] | str | None = None,
-        port: int | Port | Iterable[int | Port] | None = None,
+        port: int | str | IPBind | List[int | str | IPBind] | None = None,
     ):
         ports: list[Port] = DEFAULT_PORT if port is None else port
-        _port = _ports(ports)
-        if _port is not None:
-            ports = [_port]
-        self.servers: dict[Port, LibDNSServer | None] = {}
+        if not isinstance(ports, list):
+            ports = [ports]
+        self.servers: dict[IPBind, LibDNSServer | None] = {}
         for port in ports:
-            port, tcp = _ports(port)
-            port = int(port or DEFAULT_PORT)
-            if tcp is None or tcp is False:
-                self.servers[(port, False)] = None
-            if tcp is None or tcp is True:
-                self.servers[(port, True)] = None
+            if not isinstance(port, tuple):
+                port = (port,)
+            bind = IPBind.parse(*port, default_port=DEFAULT_PORT)
+            for proto in bind.proto:
+                self.servers[IPBind(bind.address, bind.port, proto)] = None
 
         self.resolver = resolver or list([])
         if isinstance(self.resolver, list):
@@ -76,11 +117,11 @@ class DNSServer(Generic[R]):
             raise ValueError(self.resolver)
 
     def start(self):
-        for port, tcp in self.servers:
-            LOGGER.info('starting DNS server on port %d protocol: %s', port, 'tcp' if tcp else 'udp')
-            server = LibDNSServer(self.resolver, port=port, tcp=tcp)
+        for bind in self.servers:
+            LOGGER.info('starting DNS server on ip: %s port: %d protocol: %s', *bind)
+            server = LibDNSServer(self.resolver, address=bind.address, port=bind.port, tcp=bind.proto is IPProto.TCP)
             server.start_thread()
-            self.servers[(port, tcp)] = server
+            self.servers[bind] = server
 
     def stop(self):
         for server in self.servers.values():
@@ -96,7 +137,7 @@ class DNSServer(Generic[R]):
 
     @property
     def port(self):
-        return next(iter(self.servers.keys()))[0]
+        return next(iter(self.servers.keys())).port
 
 
 class SimpleDNSServer(DNSServer[RoundRobinResolver[RecordsResolver, ForwarderResolver] | RecordsResolver]):
