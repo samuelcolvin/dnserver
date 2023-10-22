@@ -9,20 +9,11 @@ from dnslib.server import BaseResolver as LibBaseResolver, DNSServer as LibDNSSe
 
 from .load_records import Records, Zone, load_records
 from .resolver import BaseResolver, RecordsResolver, ProxyResolver, RoundRobinResolver, R
-from .common import LOGGER, DEFAULT_PORT, SharedObject
+from .common import LOGGER, DEFAULT_PORT, SharedObject, Record
 
 __all__ = 'DNSServer', 'LOGGER'
 
 DEFAULT_UPSTREAM = '1.1.1.1'
-
-handler = logging.StreamHandler()
-handler.setLevel(logging.INFO)
-handler.setFormatter(logging.Formatter('%(asctime)s: %(message)s', datefmt='%H:%M:%S'))
-
-LOGGER.addHandler(handler)
-LOGGER.setLevel(logging.INFO)
-
-
 Port: TypeAlias = tuple[int, bool]
 
 
