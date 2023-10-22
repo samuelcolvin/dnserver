@@ -32,6 +32,11 @@ class IPBind(NamedTuple):
     port: 'int | None'
     proto: IPProto
 
+    def expand(self):
+        for proto in IPProto:
+            if proto in self.proto:
+                yield IPBind(*self[:2], proto)
+
     @classmethod
     def parse(
         cls,
@@ -110,8 +115,8 @@ class DNSServer(Generic[R]):
             if not isinstance(port, tuple):
                 port = (port,)
             bind = IPBind.parse(*port, default_port=DEFAULT_PORT)
-            for proto in bind.proto:
-                self.servers[IPBind(bind.address, bind.port, proto)] = None
+            for _bind in bind.expand():
+                self.servers[_bind] = None
 
         self.resolver = resolver or list([])
         if isinstance(self.resolver, list):
