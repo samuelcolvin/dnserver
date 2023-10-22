@@ -68,14 +68,28 @@ class RoundRobinResolver(BaseResolver, _ty.Generic[*_TR]):
     def __init__(self, resolvers: tuple[*_TR]):
         self.resolvers = tuple(resolvers)
 
+    def _resolvers(self, request: DNSRecord, handler: DNSHandler) -> _ty.Iterable[BaseResolver]:
+        '''Gives the option to modify the order of resolvers or exclude resolver by request'''
+        return self.resolvers
+
+    def validate(self, answer: DNSRecord, resolver: BaseResolver, request: DNSRecord, handler: DNSHandler):
+        '''Gives the option to decide if a request is valid or check the next resolver for a request'''
+        return bool(answer and answer.header.rcode == 0 and answer.rr)
+
+    def default_answer(self, badanswers: list[DNSRecord | None], request: DNSRecord, handler: DNSHandler):
+        '''Override default response'''
+        return badanswers[-1] if badanswers else request.reply()
+
     def resolve(self, request: DNSRecord, handler: DNSHandler):
-        answer = request.reply()
         resolver: BaseResolver
-        for resolver in self.resolvers:
+        badanswers = []
+        for resolver in self._resolvers(request, handler):
             answer: DNSRecord = resolver.resolve(request, handler)
-            if answer.header.rcode == 0 and answer.rr:
+            if self.validate(answer, resolver, request, handler):
                 return answer
-        return answer
+            else:
+                badanswers.append(answer)
+        return self.default_answer(badanswers, request, handler)
 
 
 class ForwarderResolver(RoundRobinResolver[ProxyResolver]):
