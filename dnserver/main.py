@@ -4,8 +4,7 @@ import logging
 from datetime import datetime
 from pathlib import Path
 from textwrap import wrap
-from types import NoneType
-from typing import Any, List, Generic, TypeVar, overload, TypeVarTuple, Iterable, TypeAlias, Sequence, Tuple
+from typing import Any, List, Generic, TypeVar, overload, Iterable, TypeAlias, Sequence
 from threading import Lock
 
 from dnslib import QTYPE, RR, DNSLabel, dns, DNSRecord
