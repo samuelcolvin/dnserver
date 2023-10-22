@@ -225,7 +225,7 @@ class BaseDNSServer(Generic[R]):
         if isinstance(self.resolver, SharedObject):
             self.resolver = RecordsResolver(self.resolver)
         if isinstance(self.resolver, str):
-            resolvers = [ProxyResolver(*upstream.split(":")) for upstream in resolver.split(',')]
+            resolvers = [ProxyResolver(*upstream.split(':')) for upstream in resolver.split(',')]
             if len(resolvers) > 1:
                 self.resolver = RoundRobinResolver(resolvers)
             else:
@@ -273,7 +273,7 @@ class DNSServer(BaseDNSServer['RoundRobinResolver[RecordsResolver | ProxyResolve
         if upstream:
             logger.info('upstream DNS server "%s"', upstream)
             self.resolver = RoundRobinResolver(
-                [self.resolver, *[ProxyResolver(*upstream.split(":")) for upstream in upstream.split(',')]]
+                [self.resolver, *[ProxyResolver(*upstream.split(':')) for upstream in upstream.split(',')]]
             )
         else:
             logger.info('without upstream DNS server')
