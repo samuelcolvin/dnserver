@@ -12,7 +12,7 @@ _TR = _ty.TypeVarTuple('_TR')
 
 class RecordsResolver(BaseResolver):
     def __init__(self, records: SharedObject[Records] | Records):
-        self.records = records
+        self.records: SharedObject[Records] = records
         if not isinstance(records, SharedObject):
             self.records = SharedObject(self.records)
 
