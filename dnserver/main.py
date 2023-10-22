@@ -68,22 +68,25 @@ class IPBind(NamedTuple):
         return cls(address, int(port), proto)
 
 
+IPBindLike = int | str | IPBind | tuple
+
+
 class DNSServer(Generic[R]):
     resolver: R
 
     @overload
-    def __new__(self, resolver: R, port: int | Port | Iterable[int | Port] | None = None) -> _Self[R]:
+    def __new__(self, resolver: R, port: IPBindLike | Iterable[IPBindLike] | None = None) -> _Self[R]:
         ...
 
     @overload
-    def __new__(self, resolver: str, port: int | Port | Iterable[int | Port] | None = None) -> _Self[ForwarderResolver]:
+    def __new__(self, resolver: str, port: IPBindLike | Iterable[IPBindLike] | None = None) -> _Self[ForwarderResolver]:
         ...
 
     @overload
     def __new__(
         self,
         resolver: Records | SharedObject[Records] | None = None,
-        port: int | Port | Iterable[int | Port] | None = None,
+        port: IPBindLike | Iterable[IPBindLike] | None = None,
     ) -> _Self[RecordsResolver]:
         ...
 
@@ -147,7 +150,7 @@ class SimpleDNSServer(DNSServer[RoundRobinResolver[RecordsResolver, ForwarderRes
     def __init__(
         self,
         records: Records | SharedObject[Records] | None = None,
-        port: int | Port | Iterable[int | Port] | None = DEFAULT_PORT,
+        port: IPBindLike | Iterable[IPBindLike] | None = DEFAULT_PORT,
         upstream: str | List[str] | None = DEFAULT_UPSTREAM,
     ):
         super().__init__(records, port)
@@ -163,7 +166,7 @@ class SimpleDNSServer(DNSServer[RoundRobinResolver[RecordsResolver, ForwarderRes
         cls,
         config: str | Path | Config,
         *,
-        port: int | str | None = None,
+        port: IPBindLike | None = None,
         upstream: str | None = DEFAULT,
     ) -> 'SimpleDNSServer':
         if isinstance(config, (str, Path)):
