@@ -173,7 +173,7 @@ Port: TypeAlias = tuple[int, bool]
 
 def _ports(obj):
     if isinstance(obj, Sequence):
-        if len(obj) == 2 and isinstance(obj[1], (bool, NoneType)):
+        if len(obj) == 2 and isinstance(obj[1], (bool, type(None))):
             return (obj[0], obj[1])
         return None
     return (obj, None)
@@ -260,7 +260,7 @@ class BaseDNSServer(Generic[R]):
         return next(self.servers.keys().__iter__())[0]
 
 
-class DNSServer(BaseDNSServer[RoundRobinResolver[RecordsResolver, ProxyResolver] | RecordsResolver]):
+class DNSServer(BaseDNSServer[RoundRobinResolver[RecordsResolver|ProxyResolver] | RecordsResolver]):
     def __new__(cls, *args, **kwargs) -> 'DNSServer':
         return super().__new__(cls)
 
