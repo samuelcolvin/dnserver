@@ -4,7 +4,7 @@ import logging
 from datetime import datetime
 from pathlib import Path
 from textwrap import wrap
-from typing import Any, List, Generic, TypeVar, overload, Iterable, Sequence, Tuple
+from typing import Any, List, Generic, TypeVar, overload, Iterable, Sequence, Tuple, Dict
 from threading import Lock
 
 from dnslib import QTYPE, RR, DNSLabel, dns, DNSRecord
@@ -151,6 +151,7 @@ class ProxyResolver(LibProxyResolver):
 
 R = TypeVar('R', bound=LibBaseResolver)
 
+
 class RoundRobinResolver(LibBaseResolver, Generic[R]):
     def __init__(self, resolvers: Iterable[R]):
         self.resolvers = tuple(resolvers)
@@ -180,20 +181,20 @@ class BaseDNSServer(Generic[R]):
     resolver: R
 
     @overload
-    def __new__(self, resolver: R, port: int | Port | Iterable[int | Port] | None = None) -> BaseDNSServer[R]:
+    def __new__(self, resolver: R, port: 'int | Port | Iterable[int | Port] | None' = None) -> BaseDNSServer[R]:
         ...
 
     @overload
     def __new__(
-        self, resolver: str, port: int | Port | Iterable[int | Port] | None = None
+        self, resolver: str, port: 'int | Port | Iterable[int | Port] | None' = None
     ) -> BaseDNSServer[RoundRobinResolver | ProxyResolver]:
         ...
 
     @overload
     def __new__(
         self,
-        resolver: Records | SharedObject[Records] | None = None,
-        port: int | Port | Iterable[int | Port] | None = None,
+        resolver: 'Records | SharedObject[Records] | None' = None,
+        port: 'int | Port | Iterable[int | Port] | None' = None,
     ) -> BaseDNSServer[RecordsResolver]:
         ...
 
@@ -202,14 +203,14 @@ class BaseDNSServer(Generic[R]):
 
     def __init__(
         self,
-        resolver: R | Records | SharedObject[Records] | str | None = None,
-        port: int | Port | Iterable[int | Port] | None = None,
+        resolver: 'R | Records | SharedObject[Records] | str | None' = None,
+        port: 'int | Port | Iterable[int | Port] | None' = None,
     ):
-        ports: list[Port] = DEFAULT_PORT if port is None else port
+        ports: List[Port] = DEFAULT_PORT if port is None else port
         _port = _ports(ports)
         if _port is not None:
             ports = [_port]
-        self.servers: dict[Port, LibDNSServer | None] = {}
+        self.servers: Dict[Port, 'LibDNSServer | None'] = {}
         for port in ports:
             port, tcp = _ports(port)
             port = int(port or DEFAULT_PORT)
@@ -257,15 +258,15 @@ class BaseDNSServer(Generic[R]):
         return next(self.servers.keys().__iter__())[0]
 
 
-class DNSServer(BaseDNSServer[RoundRobinResolver[RecordsResolver|ProxyResolver] | RecordsResolver]):
+class DNSServer(BaseDNSServer['RoundRobinResolver[RecordsResolver | ProxyResolver] | RecordsResolver']):
     def __new__(cls, *args, **kwargs) -> 'DNSServer':
         return super().__new__(cls)
 
     def __init__(
         self,
-        records: Records | SharedObject[Records] | None = None,
-        port: int | Port | Iterable[int | Port] | None = DEFAULT_PORT,
-        upstream: str | None = DEFAULT_UPSTREAM,
+        records: 'Records | SharedObject[Records] | None' = None,
+        port: 'int | Port | Iterable[int | Port] | None' = DEFAULT_PORT,
+        upstream: 'str | None' = DEFAULT_UPSTREAM,
     ):
         super().__init__(records, port)
         self.records: SharedObject[Records] = self.resolver._records
@@ -279,7 +280,11 @@ class DNSServer(BaseDNSServer[RoundRobinResolver[RecordsResolver|ProxyResolver] 
 
     @classmethod
     def from_toml(
-        cls, zones_file: str | Path, *, port: int | str | None = DEFAULT_PORT, upstream: str | None = DEFAULT_UPSTREAM
+        cls,
+        zones_file: 'str | Path',
+        *,
+        port: 'int | str | None' = DEFAULT_PORT,
+        upstream: 'str | None' = DEFAULT_UPSTREAM,
     ) -> 'DNSServer':
         records = load_records(zones_file)
         logger.info(
