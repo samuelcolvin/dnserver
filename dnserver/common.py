@@ -8,15 +8,15 @@ import dataclasses as _data
 import re as _re
 
 try:
-    from typing import Literal
+    from typing import Literal as _Lit
 except ImportError:
-    from typing_extensions import Literal
+    from typing_extensions import Literal as _Lit
 try:
-    from typing import Self
+    from typing import Self as _Self
 except ImportError:
-    from typing_extensions import Self
+    from typing_extensions import Self as _Self
 
-RecordType = Literal[
+RecordType = _Lit[
     'A', 'AAAA', 'CAA', 'CNAME', 'DNSKEY', 'MX', 'NAPTR', 'NS', 'PTR', 'RRSIG', 'SOA', 'SRV', 'TXT', 'SPF'
 ]
 RECORD_TYPES = RecordType.__args__  # type: ignore
@@ -134,3 +134,6 @@ class Record:
 
     def __str__(self):
         return str(self.rr)
+
+
+Records: _ty.TypeAlias = _ty.List[Record]

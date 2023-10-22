@@ -1,19 +1,18 @@
-from __future__ import annotations as _annotations
-
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
-from .common import Zone
+from typing import Any, List
+from .common import Zone, Record, Records, _Self
 
-__all__ = 'Records'
+__all__ = 'Config'
+
 
 @dataclass
-class Records:
-    zones: list[Zone]
+class Config:
+    zones: List[Zone]
 
     @classmethod
-    def load(cls, zones_file: str | Path) -> Records:
+    def load(cls, zones_file: str | Path) -> _Self:
         data = _parse_toml(zones_file)
         try:
             zones = data['zones']
@@ -22,7 +21,10 @@ class Records:
 
         if not isinstance(zones, list):
             raise ValueError(f'Zones must be a list, not {type(zones).__name__}')
-        return cls([Zone.from_raw(i, zone) for i, zone in enumerate(zones, start=1)])
+        return cls(zones=[Zone.from_raw(i, zone) for i, zone in enumerate(zones, start=1)])
+
+    def records(self) -> Records:
+        return [Record(zone) for zone in self.zones]
 
 
 def _parse_toml(zones_file: str | Path) -> dict[str, Any]:

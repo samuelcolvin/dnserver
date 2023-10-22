@@ -4,44 +4,40 @@ import dnslib as _dns
 from dnslib.server import BaseResolver, DNSHandler, DNSRecord
 from dnslib.proxy import ProxyResolver
 
-from .common import LOGGER, DEFAULT_PORT, SharedObject, Record
-from .load_records import Records
+from .common import LOGGER, DEFAULT_PORT, SharedObject, Record, Records
 
 R = _ty.TypeVar('R', bound=BaseResolver)
 _TR = _ty.TypeVarTuple('_TR')
 
-
 class RecordsResolver(BaseResolver):
-    def __init__(self, records: SharedObject[Records]):
-        self._records = records
-
-    def records(self):
-        with self._records as records:
-            return [Record(zone) for zone in records.zones]
+    def __init__(self, records: SharedObject[Records]|Records):
+        self.records = records
+        if not isinstance(records, SharedObject):
+            self.records = SharedObject(self.records)
 
     def resolve(self, request: DNSRecord, handler: DNSHandler):
-        records = self.records()
-        type_name = _dns.QTYPE[request.q.qtype]
-        reply = request.reply()
-        for record in records:
-            if record.match(request.q):
-                reply.add_answer(record.rr)
+        with self.records as records:
+            type_name = _dns.QTYPE[request.q.qtype]
+            reply = request.reply()
+            for record in records:
+                if record.match(request.q):
+                    reply.add_answer(record.rr)
 
-        if reply.rr:
-            LOGGER.info('found zone for %s[%s], %d replies', request.q.qname, type_name, len(reply.rr))
-            return reply
+            if reply.rr:
+                LOGGER.info('found zone for %s[%s], %d replies', request.q.qname, type_name, len(reply.rr))
+                return reply
 
-        # no direct zone so look for an SOA record for a higher level zone
-        for record in records:
-            if record.sub_match(request.q):
-                reply.add_answer(record.rr)
+            # no direct zone so look for an SOA record for a higher level zone
+            for record in records:
+                if record.sub_match(request.q):
+                    reply.add_answer(record.rr)
 
-        if reply.rr:
-            LOGGER.info('found higher level SOA resource for %s[%s]', request.q.qname, type_name)
-            return reply
+            if reply.rr:
+                LOGGER.info('found higher level SOA resource for %s[%s]', request.q.qname, type_name)
+                return reply
 
-        LOGGER.info('no local zone found %s[%s]', request.q.qname, type_name)
-        return request.reply()
+            LOGGER.info('no local zone found %s[%s]', request.q.qname, type_name)
+            return request.reply()
 
 
 class ProxyResolver(ProxyResolver):

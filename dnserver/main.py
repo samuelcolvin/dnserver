@@ -7,9 +7,9 @@ from typing import Any, List, Generic, overload, Iterable, TypeAlias, Sequence
 
 from dnslib.server import BaseResolver as LibBaseResolver, DNSServer as LibDNSServer
 
-from .load_records import Records, Zone
-from .resolver import BaseResolver, RecordsResolver, ProxyResolver, RoundRobinResolver, R
-from .common import LOGGER, DEFAULT_PORT, SharedObject, Record
+from .config import Config
+from .resolver import BaseResolver, RecordsResolver, ProxyResolver, RoundRobinResolver, R, Records
+from .common import LOGGER, DEFAULT_PORT, SharedObject, Record, Zone
 
 __all__ = 'DNSServer', 'LOGGER'
 
@@ -67,8 +67,8 @@ class BaseDNSServer(Generic[R]):
             if tcp is None or tcp is True:
                 self.servers[(port, True)] = None
 
-        self.resolver = resolver or Records(zones=[])
-        if isinstance(self.resolver, Records):
+        self.resolver = resolver or list([])
+        if isinstance(self.resolver, list):
             self.resolver = SharedObject(self.resolver)
         if isinstance(self.resolver, SharedObject):
             self.resolver = RecordsResolver(self.resolver)
@@ -117,7 +117,7 @@ class DNSServer(BaseDNSServer[RoundRobinResolver[RecordsResolver, ProxyResolver]
         upstream: str | None = DEFAULT_UPSTREAM,
     ):
         super().__init__(records, port)
-        self.records: SharedObject[Records] = self.resolver._records
+        self.records: SharedObject[Records] = self.resolver.records
         if upstream:
             LOGGER.info('upstream DNS server "%s"', upstream)
             self.resolver = RoundRobinResolver(
@@ -130,19 +130,26 @@ class DNSServer(BaseDNSServer[RoundRobinResolver[RecordsResolver, ProxyResolver]
     def from_toml(
         cls, zones_file: str | Path, *, port: int | str | None = DEFAULT_PORT, upstream: str | None = DEFAULT_UPSTREAM
     ) -> 'DNSServer':
-        records = Records.load(zones_file)
+        config = Config.load(zones_file)
+        records = config.records()
         LOGGER.info(
             'loaded %d zone record from %s, with %s as a proxy DNS server',
-            len(records.zones),
+            len(config.zones),
             zones_file,
             upstream,
         )
         return DNSServer(records, port=port, upstream=upstream)
 
-    def add_record(self, zone: Zone):
+    def add_record(self, record: Zone | Record):
+        if not isinstance(record, Record):
+            record = Record(record)
         with self.records as records:
-            records.zones.append(zone)
+            records.append(record)
 
-    def set_records(self, zones: List[Zone]):
-        with self.records as records:
-            records.zones = zones
+    def set_records(self, records: Sequence[Zone | Record]):
+        _records = []
+        for record in records:
+            if not isinstance(record, Record):
+                record = Record(record)
+            _records.append(record)
+        self.records.set(_records)
