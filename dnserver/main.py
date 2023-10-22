@@ -155,7 +155,7 @@ TR = TypeVarTuple('TR')
 
 
 class RoundRobinResolver(LibBaseResolver, Generic[R]):
-    def __init__(self, resolvers: Sequence[R]):
+    def __init__(self, resolvers: Iterable[R]):
         self.resolvers = tuple(resolvers)
 
     def resolve(self, request: DNSRecord, handler: DNSHandler):
