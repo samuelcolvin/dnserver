@@ -1,9 +1,10 @@
 import typing as _ty
 
+import dnslib as _dns
 from dnslib.server import BaseResolver, DNSHandler, DNSRecord
 from dnslib.proxy import ProxyResolver
 
-from .common import LOGGER, DEFAULT_PORT, QTYPE, SharedObject, Record
+from .common import LOGGER, DEFAULT_PORT, SharedObject, Record
 from .load_records import Records
 
 R = _ty.TypeVar('R', bound=BaseResolver)
@@ -20,7 +21,7 @@ class RecordsResolver(BaseResolver):
 
     def resolve(self, request: DNSRecord, handler: DNSHandler):
         records = self.records()
-        type_name = QTYPE[request.q.qtype]
+        type_name = _dns.QTYPE[request.q.qtype]
         reply = request.reply()
         for record in records:
             if record.match(request.q):
@@ -48,7 +49,7 @@ class ProxyResolver(ProxyResolver):
         super().__init__(address=upstream, port=int(port or DEFAULT_PORT), timeout=int(timeout or 5))
 
     def resolve(self, request: DNSRecord, handler: DNSHandler):
-        type_name = QTYPE[request.q.qtype]
+        type_name = _dns.QTYPE[request.q.qtype]
         LOGGER.info('proxying %s[%s]', request.q.qname, type_name)
         return super().resolve(request, handler)
 
