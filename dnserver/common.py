@@ -1,3 +1,4 @@
+from typing import Any
 import dnslib as _dns
 import logging as _log
 import typing as _ty
@@ -47,6 +48,7 @@ T = _ty.TypeVar('T')
 
 class _Default:
     ...
+
     def __bool__(self):
         return False
 
@@ -103,46 +105,49 @@ class Zone:
 
         return cls(host, type_, answer)
 
+    def rr(zone):
+        rname = _dns.DNSLabel(zone.host)
 
-class Record:
-    def __init__(self, zone: Zone):
-        self._rname = _dns.DNSLabel(zone.host)
-
-        rd_cls, self._rtype = TYPE_LOOKUP[zone.type]
-
+        rd_cls, rtype = TYPE_LOOKUP[zone.type]
         args: list[_ty.Any]
         if isinstance(zone.answer, str):
-            if self._rtype == _dns.QTYPE.TXT:
+            if rtype == _dns.QTYPE.TXT:
                 args = [_wrap(zone.answer, 255)]
             else:
                 args = [zone.answer]
         else:
-            if self._rtype == _dns.QTYPE.SOA and len(zone.answer) == 2:
+            if rtype == _dns.QTYPE.SOA and len(zone.answer) == 2:
                 # add sensible times to SOA
                 args = zone.answer + [(SERIAL_NO, 3600, 3600 * 3, 3600 * 24, 3600)]
             else:
                 args = zone.answer
 
-        if self._rtype in (_dns.QTYPE.NS, _dns.QTYPE.SOA):
+        if rtype in (_dns.QTYPE.NS, _dns.QTYPE.SOA):
             ttl = 3600 * 24
         else:
             ttl = 300
 
-        self.rr = _dns.RR(
-            rname=self._rname,
-            rtype=self._rtype,
+        return _dns.RR(
+            rname=rname,
+            rtype=rtype,
             rdata=rd_cls(*args),
             ttl=ttl,
         )
 
+
+class Record:
+    def __init__(self, record: Zone | _dns.RR):
+        if isinstance(record, Zone):
+            record = record.rr()
+        self.rr = record
+
+    def __getattr__(self, __name: str) -> Any:
+        return getattr(self.rr, __name)
+
     def match(self, q):
-        return q.qname == self._rname and (q.qtype == _dns.QTYPE.ANY or q.qtype == self._rtype)
+        return q.qname == self.rr._rname and (q.qtype == _dns.QTYPE.ANY or q.qtype == self.rr.rtype)
 
     def sub_match(self, q):
-        return self._rtype == _dns.QTYPE.SOA and q.qname.matchSuffix(self._rname)
-
-    def __str__(self):
-        return str(self.rr)
-
+        return self.rr.rtype == _dns.QTYPE.SOA and q.qname.matchSuffix(self.rr.rname)
 
 Records: _ty.TypeAlias = _ty.List[Record]
