@@ -150,4 +150,5 @@ class Record:
     def sub_match(self, q):
         return self.rr.rtype == _dns.QTYPE.SOA and q.qname.matchSuffix(self.rr.rname)
 
+
 Records: _ty.TypeAlias = _ty.List[Record]
