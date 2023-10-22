@@ -55,7 +55,7 @@ def verify(response: dns.message.Message, ns: str, verified: dict = None, anchor
         else:
             ds = dns.query.udp(dns.message.make_query(signer, dns.rdatatype.DS, want_dnssec=True), ns)
             ds_set = ds.answer[0]
-            if signer.fullcompare(ds.answer[1][0].signer)[0] != dns.name.NAMERELN_SUBDOMAIN:
+            if signer.fullcompare(ds.answer[1][0].signer)[0] == dns.name.NAMERELN_SUPERDOMAIN:
                 raise dnssec.ValidationFailure(signer)
             verify(ds, ns, verified)
         found = False
