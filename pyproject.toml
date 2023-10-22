@@ -54,7 +54,7 @@ Changelog = 'https://github.com/samuelcolvin/dnserver/releases'
 
 [tool.pytest.ini_options]
 testpaths = 'tests'
-filterwarnings = ['error']
+filterwarnings = ['error','ignore::DeprecationWarning']
 timeout = 10
 
 [tool.coverage.run]

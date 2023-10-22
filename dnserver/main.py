@@ -150,8 +150,6 @@ class ProxyResolver(LibProxyResolver):
 
 
 R = TypeVar('R', bound=LibBaseResolver)
-TR = TypeVarTuple('TR')
-
 
 class RoundRobinResolver(LibBaseResolver, Generic[R]):
     def __init__(self, resolvers: Iterable[R]):
