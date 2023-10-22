@@ -1,7 +1,7 @@
+from .common import LOGGER, Record, SharedObject, Zone
 from .config import Config
-from .common import *
-from .main import *
-from .resolver import *
+from .main import DNSServer, SimpleDNSServer
+from .resolver import BaseResolver, ForwarderResolver, ProxyResolver, RecordsResolver, RoundRobinResolver
 from .version import VERSION
 
 __all__ = 'SimpleDNSServer', 'Zone', '__version__'
