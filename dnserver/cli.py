@@ -6,14 +6,15 @@ import signal
 import sys
 from time import sleep
 
-from .main import DEFAULT_UPSTREAM, DNSServer, logger
+from .common import LOGGER
+from .main import DEFAULT_UPSTREAM, DNSServer
 from .version import VERSION
 
 __all__ = ('cli',)
 
 
 def handle_sig(signum, frame):  # pragma: no cover
-    logger.info('pid=%d, got signal: %s, stopping...', os.getpid(), signal.Signals(signum).name)
+    LOGGER.info('pid=%d, got signal: %s, stopping...', os.getpid(), signal.Signals(signum).name)
     raise KeyboardInterrupt
 
 
@@ -79,7 +80,7 @@ def cli_logic(args: list[str]) -> int:
     except KeyboardInterrupt:  # pragma: no cover
         pass
     finally:
-        logger.info('stopping DNS server')
+        LOGGER.info('stopping DNS server')
         server.stop()
 
     return 0
