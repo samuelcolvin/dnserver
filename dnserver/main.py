@@ -4,7 +4,7 @@ import logging
 from datetime import datetime
 from pathlib import Path
 from textwrap import wrap
-from typing import Any, List, Generic, TypeVar, overload, Iterable, TypeAlias, Sequence
+from typing import Any, List, Generic, TypeVar, overload, Iterable, Sequence, Tuple
 from threading import Lock
 
 from dnslib import QTYPE, RR, DNSLabel, dns, DNSRecord
@@ -165,7 +165,7 @@ class RoundRobinResolver(LibBaseResolver, Generic[R]):
         return answer
 
 
-Port: TypeAlias = tuple[int, bool]
+Port = Tuple[int, bool]
 
 
 def _ports(obj):
