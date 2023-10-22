@@ -4,17 +4,17 @@ import dnslib as _dns
 from dnslib.server import BaseResolver, DNSHandler, DNSRecord
 from dnslib.proxy import ProxyResolver
 
-from .common import LOGGER, DEFAULT_PORT, SharedObject, Record, Records
+from . import common as _common
 
 R = _ty.TypeVar('R', bound=BaseResolver)
 _TR = _ty.TypeVarTuple('_TR')
 
 
 class RecordsResolver(BaseResolver):
-    def __init__(self, records: SharedObject[Records] | Records):
-        self.records: SharedObject[Records] = records
-        if not isinstance(records, SharedObject):
-            self.records = SharedObject(self.records)
+    def __init__(self, records: _common.SharedObject[_common.Records] | _common.Records):
+        self.records: _common.SharedObject[_common.Records] = records
+        if not isinstance(records, _common.SharedObject):
+            self.records = _common.SharedObject(self.records)
 
     def resolve(self, request: DNSRecord, handler: DNSHandler):
         with self.records as records:
@@ -25,7 +25,7 @@ class RecordsResolver(BaseResolver):
                     reply.add_answer(record.rr)
 
             if reply.rr:
-                LOGGER.info('found zone for %s[%s], %d replies', request.q.qname, type_name, len(reply.rr))
+                _common.LOGGER.info('found zone for %s[%s], %d replies', request.q.qname, type_name, len(reply.rr))
                 return reply
 
             # no direct zone so look for an SOA record for a higher level zone
@@ -34,10 +34,10 @@ class RecordsResolver(BaseResolver):
                     reply.add_answer(record.rr)
 
             if reply.rr:
-                LOGGER.info('found higher level SOA resource for %s[%s]', request.q.qname, type_name)
+                _common.LOGGER.info('found higher level SOA resource for %s[%s]', request.q.qname, type_name)
                 return reply
 
-            LOGGER.info('no local zone found %s[%s]', request.q.qname, type_name)
+            _common.LOGGER.info('no local zone found %s[%s]', request.q.qname, type_name)
             return request.reply()
 
 
@@ -52,7 +52,7 @@ class ProxyResolver(ProxyResolver):
         timeout = parts[2] if timeout is None else timeout
         strip_aaa = parts[3] if strip_aaa is None else strip_aaa
 
-        port = DEFAULT_PORT if port is None else port
+        port = _common.DEFAULT_PORT if port is None else port
         timeout = self.DEFAULT_TIMEOUT if timeout is None else timeout
         strip_aaa = self.DEFAULT_STRIP_AAA if strip_aaa is None else strip_aaa
 
@@ -60,7 +60,7 @@ class ProxyResolver(ProxyResolver):
 
     def resolve(self, request: DNSRecord, handler: DNSHandler):
         type_name = _dns.QTYPE[request.q.qtype]
-        LOGGER.info('proxying %s[%s]', request.q.qname, type_name)
+        _common.LOGGER.info('proxying %s[%s]', request.q.qname, type_name)
         return super().resolve(request, handler)
 
 

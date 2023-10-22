@@ -1,17 +1,15 @@
 from __future__ import annotations as _annotations
 
-import logging
 from pathlib import Path
-from types import NoneType
-from typing import Any, List, Generic, overload, Iterable, TypeAlias, Sequence, NamedTuple
+from typing import List, Generic, overload, Iterable, TypeAlias, Sequence, NamedTuple
 
 from dnslib.server import DNSServer as LibDNSServer
 from enum import Flag, auto, STRICT
 from urllib.parse import urlparse
 
 from .config import Config
-from .resolver import BaseResolver, RecordsResolver, ForwarderResolver, RoundRobinResolver, R, Records
-from .common import LOGGER, DEFAULT_PORT, SharedObject, Record, Zone, _Self, DEFAULT
+from .resolver import BaseResolver, RecordsResolver, ForwarderResolver, RoundRobinResolver, R
+from .common import LOGGER, DEFAULT_PORT, SharedObject, Record, Zone, _Self, DEFAULT, Records
 
 __all__ = 'SimpleDNSServer', 'DNSServer'
 

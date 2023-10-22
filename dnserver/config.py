@@ -1,7 +1,7 @@
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, BinaryIO, List, Callable, OrderedDict, TypeAlias
+from typing import BinaryIO, List, Callable, OrderedDict
 from .common import Zone, Record, Records, _Self, DEFAULT
 
 

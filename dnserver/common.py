@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any as _Any
 import dnslib as _dns
 import logging as _log
 import typing as _ty
@@ -141,7 +141,7 @@ class Record:
             record = record.rr()
         self.rr = record
 
-    def __getattr__(self, __name: str) -> Any:
+    def __getattr__(self, __name: str) -> _Any:
         return getattr(self.rr, __name)
 
     def match(self, q: _dns.DNSQuestion) -> bool:
