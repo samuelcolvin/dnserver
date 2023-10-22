@@ -144,10 +144,10 @@ class Record:
     def __getattr__(self, __name: str) -> Any:
         return getattr(self.rr, __name)
 
-    def match(self, q):
+    def match(self, q: _dns.DNSQuestion) -> bool:
         return q.qname == self.rr._rname and (q.qtype == _dns.QTYPE.ANY or q.qtype == self.rr.rtype)
 
-    def sub_match(self, q):
+    def sub_match(self, q: _dns.DNSQuestion) -> bool:
         return self.rr.rtype == _dns.QTYPE.SOA and q.qname.matchSuffix(self.rr.rname)
 
 
