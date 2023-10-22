@@ -9,8 +9,9 @@ from .common import LOGGER, DEFAULT_PORT, SharedObject, Record, Records
 R = _ty.TypeVar('R', bound=BaseResolver)
 _TR = _ty.TypeVarTuple('_TR')
 
+
 class RecordsResolver(BaseResolver):
-    def __init__(self, records: SharedObject[Records]|Records):
+    def __init__(self, records: SharedObject[Records] | Records):
         self.records = records
         if not isinstance(records, SharedObject):
             self.records = SharedObject(self.records)
@@ -41,8 +42,21 @@ class RecordsResolver(BaseResolver):
 
 
 class ProxyResolver(ProxyResolver):
-    def __init__(self, upstream: str, port=DEFAULT_PORT, timeout=5):
-        super().__init__(address=upstream, port=int(port or DEFAULT_PORT), timeout=int(timeout or 5))
+    DEFAULT_TIMEOUT = 5
+    DEFAULT_STRIP_AAA = False
+
+    def __init__(self, address: str, port=None, timeout=None, strip_aaa=None):
+        parts = address.split(':') + [None] * 3
+        address = parts[0]
+        port = parts[1] if port is None else port
+        timeout = parts[2] if timeout is None else timeout
+        strip_aaa = parts[3] if strip_aaa is None else strip_aaa
+
+        port = DEFAULT_PORT if port is None else port
+        timeout = self.DEFAULT_TIMEOUT if timeout is None else timeout
+        strip_aaa = self.DEFAULT_STRIP_AAA if strip_aaa is None else strip_aaa
+
+        super().__init__(address=address, port=int(port), timeout=int(timeout), strip_aaaa=bool(strip_aaa))
 
     def resolve(self, request: DNSRecord, handler: DNSHandler):
         type_name = _dns.QTYPE[request.q.qtype]
@@ -62,3 +76,11 @@ class RoundRobinResolver(BaseResolver, _ty.Generic[*_TR]):
             if answer.header.rcode == 0 and answer.rr:
                 return answer
         return answer
+
+
+class ForwarderResolver(RoundRobinResolver):
+    def __init__(self, upstream: str | _ty.List[str]):
+        if isinstance(upstream, str):
+            upstream = upstream.split(',')
+        resolvers = [ProxyResolver(upstream) for upstream in upstream]
+        super().__init__(resolvers)

@@ -8,7 +8,7 @@ from typing import Any, List, Generic, overload, Iterable, TypeAlias, Sequence
 from dnslib.server import BaseResolver as LibBaseResolver, DNSServer as LibDNSServer
 
 from .config import Config
-from .resolver import BaseResolver, RecordsResolver, ProxyResolver, RoundRobinResolver, R, Records
+from .resolver import BaseResolver, RecordsResolver, ForwarderResolver, RoundRobinResolver, R, Records
 from .common import LOGGER, DEFAULT_PORT, SharedObject, Record, Zone
 
 __all__ = 'DNSServer', 'LOGGER'
@@ -35,7 +35,7 @@ class BaseDNSServer(Generic[R]):
     @overload
     def __new__(
         self, resolver: str, port: int | Port | Iterable[int | Port] | None = None
-    ) -> BaseDNSServer[RoundRobinResolver | ProxyResolver]:
+    ) -> BaseDNSServer[ForwarderResolver]:
         ...
 
     @overload
@@ -73,12 +73,7 @@ class BaseDNSServer(Generic[R]):
         if isinstance(self.resolver, SharedObject):
             self.resolver = RecordsResolver(self.resolver)
         if isinstance(self.resolver, str):
-            resolvers = [ProxyResolver(*upstream.split(":")) for upstream in resolver.split(',')]
-            if len(resolvers) > 1:
-                self.resolver = RoundRobinResolver(resolvers)
-            else:
-                self.resolver = resolvers[0]
-
+            self.resolver = ForwarderResolver(self.resolver)
         if not isinstance(self.resolver, LibBaseResolver):
             raise ValueError(self.resolver)
 
@@ -106,7 +101,7 @@ class BaseDNSServer(Generic[R]):
         return next(self.servers.keys().__iter__())[0]
 
 
-class DNSServer(BaseDNSServer[RoundRobinResolver[RecordsResolver, ProxyResolver] | RecordsResolver]):
+class DNSServer(BaseDNSServer[RoundRobinResolver[RecordsResolver, ForwarderResolver] | RecordsResolver]):
     def __new__(cls, *args, **kwargs) -> 'DNSServer':
         return super().__new__(cls)
 
@@ -120,9 +115,7 @@ class DNSServer(BaseDNSServer[RoundRobinResolver[RecordsResolver, ProxyResolver]
         self.records: SharedObject[Records] = self.resolver.records
         if upstream:
             LOGGER.info('upstream DNS server "%s"', upstream)
-            self.resolver = RoundRobinResolver(
-                [self.resolver, *[ProxyResolver(*upstream.split(":")) for upstream in upstream.split(',')]]
-            )
+            self.resolver = RoundRobinResolver([self.resolver, ForwarderResolver(upstream)])
         else:
             LOGGER.info('without upstream DNS server')
 
