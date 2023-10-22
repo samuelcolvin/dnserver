@@ -4,12 +4,12 @@ import logging
 from datetime import datetime
 from pathlib import Path
 from textwrap import wrap
-from typing import Any, List, Generic, TypeVar, overload, Iterable, Sequence, Tuple, Dict
 from threading import Lock
+from typing import Any, Dict, Generic, Iterable, List, Sequence, Tuple, TypeVar, overload
 
-from dnslib import QTYPE, RR, DNSLabel, dns, DNSRecord
+from dnslib import QTYPE, RR, DNSLabel, DNSRecord, dns
 from dnslib.proxy import ProxyResolver as LibProxyResolver
-from dnslib.server import BaseResolver as LibBaseResolver, DNSServer as LibDNSServer, DNSHandler
+from dnslib.server import BaseResolver as LibBaseResolver, DNSHandler, DNSServer as LibDNSServer
 
 from .load_records import Records, Zone, load_records
 
