@@ -77,11 +77,11 @@ class SharedObject(_ty.Generic[T]):
 class Zone:
     host: str
     type: RecordType
-    answer: str | list[str | int]
+    answer: 'str | list[str | int]'
     # TODO we could add ttl and other args here if someone wanted it
 
     @classmethod
-    def from_raw(cls, index: int, data: _ty.Any) -> 'Zone':
+    def from_raw(cls, index: int, data: _ty.Any) -> '_Self':
         if not isinstance(data, dict) or data.keys() != {'host', 'type', 'answer'}:
             raise ValueError(
                 f'Zone {index} is not a valid dict, must have keys "host", "type" and "answer", got {data!r}'
@@ -136,7 +136,7 @@ class Zone:
 
 
 class Record:
-    def __init__(self, record: Zone | _dns.RR):
+    def __init__(self, record: 'Zone | _dns.RR'):
         if isinstance(record, Zone):
             record = record.rr()
         self.rr = record
@@ -151,4 +151,12 @@ class Record:
         return self.rr.rtype == _dns.QTYPE.SOA and q.qname.matchSuffix(self.rr.rname)
 
 
-Records: _ty.TypeAlias = _ty.List[Record]
+if _ty.TYPE_CHECKING:
+
+    class Records(_ty.List[Record]):
+        ...
+
+else:
+
+    class Records(list):
+        ...
