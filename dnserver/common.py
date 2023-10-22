@@ -1,12 +1,13 @@
-from typing import Any as _Any
-import dnslib as _dns
-import logging as _log
-import typing as _ty
-from threading import Lock as _Lock
-import datetime as _dt
-from textwrap import wrap as _wrap
 import dataclasses as _data
+import datetime as _dt
+import logging as _log
 import re as _re
+import typing as _ty
+from textwrap import wrap as _wrap
+from threading import Lock as _Lock
+from typing import Any as _Any
+
+import dnslib as _dns
 
 try:
     from typing import Literal as _Lit
