@@ -7,7 +7,7 @@ import sys
 from time import sleep
 
 from .common import LOGGER
-from .main import DEFAULT_UPSTREAM, SimpleDNSServer
+from .main import SimpleDNSServer
 from .version import VERSION
 
 __all__ = ('cli',)
@@ -62,7 +62,7 @@ def cli_logic(args: list[str]) -> int:
     if no_upstream:
         upstream = None
     else:
-        upstream = parsed_args.upstream or os.getenv('DNSERVER_UPSTREAM', DEFAULT_UPSTREAM)
+        upstream = parsed_args.upstream or os.getenv('DNSERVER_UPSTREAM', SimpleDNSServer.DEFAULT_UPSTREAM)
     zones_file = parsed_args.zones_file or os.getenv('DNSERVER_ZONE_FILE', None)
     if zones_file is None:
         print('no zones file specified, use --help for more information', file=sys.stderr)

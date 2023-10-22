@@ -1,3 +1,4 @@
+from dnserver import SimpleDNSServer
 from dnserver.cli import cli_logic
 
 
@@ -6,6 +7,8 @@ def test_cli(mocker):
 
     class MockDNSServer:
         """Using this rather than MagicMock as I couldn't get is_running to evaluate to falsey"""
+
+        DEFAULT_UPSTREAM = SimpleDNSServer.DEFAULT_UPSTREAM
 
         def __init__(self, *args, **kwargs):
             self.run_check = 0

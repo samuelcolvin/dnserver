@@ -1,20 +1,15 @@
-from __future__ import annotations as _annotations
-
+from enum import STRICT, Flag, auto
 from pathlib import Path
-from typing import List, Generic, overload, Iterable, TypeAlias, Sequence, NamedTuple
-
-from dnslib.server import DNSServer as LibDNSServer
-from enum import Flag, auto, STRICT
+from typing import Generic, Iterable, NamedTuple, Union, overload
 from urllib.parse import urlparse
 
+from dnslib.server import DNSServer as LibDNSServer
+
+from .common import DEFAULT, DEFAULT_PORT, LOGGER, Record, Records, SharedObject, Zone, _Self
 from .config import Config
-from .resolver import BaseResolver, RecordsResolver, ForwarderResolver, RoundRobinResolver, R
-from .common import LOGGER, DEFAULT_PORT, SharedObject, Record, Zone, _Self, DEFAULT, Records
+from .resolver import BaseResolver, ForwarderResolver, R, RecordsResolver, RoundRobinResolver
 
 __all__ = 'SimpleDNSServer', 'DNSServer'
-
-DEFAULT_UPSTREAM = '1.1.1.1'
-Port: TypeAlias = tuple[int, bool]
 
 
 class IPProto(Flag, boundary=STRICT):
@@ -25,15 +20,15 @@ class IPProto(Flag, boundary=STRICT):
 
 class IPBind(NamedTuple):
     address: str
-    port: int | None
+    port: 'int | None'
     proto: IPProto
 
     @classmethod
     def parse(
         cls,
         address: str,
-        port: str | int = None,
-        proto: str | IPProto = None,
+        port: 'str | int' = None,
+        proto: 'str | IPProto' = None,
         /,
         default_port=0,
         default_address='0.0.0.0',
@@ -66,26 +61,28 @@ class IPBind(NamedTuple):
         return cls(address, int(port), proto)
 
 
-IPBindLike = int | str | IPBind | tuple
+IPBindLike = Union[int, str, IPBind, tuple]
 
 
 class DNSServer(Generic[R]):
     resolver: R
 
     @overload
-    def __new__(self, resolver: R, port: IPBindLike | Iterable[IPBindLike] | None = None) -> _Self[R]:
+    def __new__(self, resolver: R, port: 'IPBindLike | Iterable[IPBindLike] | None' = None) -> 'DNSServer[R]':
         ...
 
     @overload
-    def __new__(self, resolver: str, port: IPBindLike | Iterable[IPBindLike] | None = None) -> _Self[ForwarderResolver]:
+    def __new__(
+        self, resolver: str, port: 'IPBindLike | Iterable[IPBindLike] | None' = None
+    ) -> 'DNSServer[ForwarderResolver]':
         ...
 
     @overload
     def __new__(
         self,
-        resolver: Records | SharedObject[Records] | None = None,
-        port: IPBindLike | Iterable[IPBindLike] | None = None,
-    ) -> _Self[RecordsResolver]:
+        resolver: 'Records | SharedObject[Records] | None' = None,
+        port: 'IPBindLike | Iterable[IPBindLike] | None' = None,
+    ) -> 'DNSServer[RecordsResolver]':
         ...
 
     def __new__(cls, *args, **kwargs):
@@ -93,13 +90,13 @@ class DNSServer(Generic[R]):
 
     def __init__(
         self,
-        resolver: R | Records | SharedObject[Records] | str | None = None,
-        port: int | str | IPBind | List[int | str | IPBind] | None = None,
+        resolver: 'R | Records | SharedObject[Records] | str | None' = None,
+        port: 'int | str | IPBind | Iterable[int | str | IPBind] | None' = None,
     ):
-        ports: list[Port] = DEFAULT_PORT if port is None else port
+        ports: 'list[IPBind]' = DEFAULT_PORT if port is None else port
         if not isinstance(ports, list):
             ports = [ports]
-        self.servers: dict[IPBind, LibDNSServer | None] = {}
+        self.servers: 'dict[IPBind, LibDNSServer | None]' = {}
         for port in ports:
             if not isinstance(port, tuple):
                 port = (port,)
@@ -141,15 +138,17 @@ class DNSServer(Generic[R]):
         return next(iter(self.servers.keys())).port
 
 
-class SimpleDNSServer(DNSServer[RoundRobinResolver[RecordsResolver, ForwarderResolver] | RecordsResolver]):
-    def __new__(cls, *args, **kwargs) -> 'SimpleDNSServer':
+class SimpleDNSServer(DNSServer[Union[RoundRobinResolver[RecordsResolver, ForwarderResolver], RecordsResolver]]):
+    DEFAULT_UPSTREAM = '1.1.1.1'
+
+    def __new__(cls, *args, **kwargs) -> '_Self':
         return super().__new__(cls)
 
     def __init__(
         self,
-        records: Records | SharedObject[Records] | None = None,
-        port: IPBindLike | Iterable[IPBindLike] | None = DEFAULT_PORT,
-        upstream: str | List[str] | None = DEFAULT_UPSTREAM,
+        records: 'Records | SharedObject[Records] | None' = None,
+        port: 'IPBindLike | Iterable[IPBindLike] | None' = DEFAULT_PORT,
+        upstream: 'str | list[str] | None' = DEFAULT_UPSTREAM,
     ):
         super().__init__(records, port)
         self.records: SharedObject[Records] = self.resolver.records
@@ -162,17 +161,17 @@ class SimpleDNSServer(DNSServer[RoundRobinResolver[RecordsResolver, ForwarderRes
     @classmethod
     def from_config(
         cls,
-        config: str | Path | Config,
+        config: 'str | Path | Config',
         *,
-        port: IPBindLike | None = None,
-        upstream: str | None = DEFAULT,
-    ) -> 'SimpleDNSServer':
+        port: 'IPBindLike | None' = None,
+        upstream: 'str | None' = DEFAULT,
+    ) -> '_Self':
         if isinstance(config, (str, Path)):
             config = Config.load(config)
         if port is None:
             port = config.port or DEFAULT_PORT
         if upstream is DEFAULT:
-            upstream = config.upstream or DEFAULT_UPSTREAM
+            upstream = config.upstream or cls.DEFAULT_UPSTREAM
         records = config.records()
         LOGGER.info(
             'loaded %d zone record from %s, with %s as a proxy DNS server',
@@ -180,15 +179,15 @@ class SimpleDNSServer(DNSServer[RoundRobinResolver[RecordsResolver, ForwarderRes
             config,
             upstream,
         )
-        return SimpleDNSServer(records, port=port, upstream=upstream)
+        return cls(records, port=port, upstream=upstream)
 
-    def add_record(self, record: Zone | Record):
+    def add_record(self, record: 'Zone | Record'):
         if not isinstance(record, Record):
             record = Record(record)
         with self.records as records:
             records.append(record)
 
-    def set_records(self, records: Sequence[Zone | Record]):
+    def set_records(self, records: 'Iterable[Zone | Record]'):
         _records = []
         for record in records:
             if not isinstance(record, Record):
