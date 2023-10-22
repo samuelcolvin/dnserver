@@ -1,19 +1,18 @@
-from dns.dnssec import DSDigest
-import dns.rdataclass
-import dns.rdatatype
+import struct
+
 import dns.message
 import dns.name
 import dns.query
+import dns.rdataclass
+import dns.rdatatype
 import dns.rrset
 from dns import dnssec
-
-import struct
-
+from dns.dnssec import DSDigest
 
 __all__ = ['load_dsdigest', 'TRUSTED_ANCHORS']
 
 
-def load_dsdigest(digest: bytes | str, digest_type: DSDigest, key_id: int, algorithm: int):
+def load_dsdigest(digest: 'bytes | str', digest_type: DSDigest, key_id: int, algorithm: int):
     if isinstance(digest, str):
         digest = bytes.fromhex(digest)
     if isinstance(digest_type, str):
