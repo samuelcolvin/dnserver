@@ -1,18 +1,26 @@
 import typing as _ty
 
 import dnslib as _dns
-from dnslib.server import BaseResolver, DNSHandler, DNSRecord
 from dnslib.proxy import ProxyResolver
+from dnslib.server import BaseResolver, DNSHandler, DNSRecord
 
-from . import common as _common
-from . import dnssec
+from . import common as _common, dnssec
+
+try:
+    from typing_extensions import (  # typing_extensions only needed for Python < 3.11
+        TypeVarTuple as _TV,
+        Unpack as _Unpack,
+    )
+except ImportError:
+    ...
+
 
 R = _ty.TypeVar('R', bound=BaseResolver)
-_TR = _ty.TypeVarTuple('_TR')
+_TR = _TV('_TR')
 
 
 class RecordsResolver(BaseResolver):
-    def __init__(self, records: _common.SharedObject[_common.Records] | _common.Records):
+    def __init__(self, records: '_common.SharedObject[_common.Records] | _common.Records'):
         self.records: _common.SharedObject[_common.Records] = records
         if not isinstance(records, _common.SharedObject):
             self.records = _common.SharedObject(self.records)
@@ -48,6 +56,8 @@ class ProxyResolver(ProxyResolver):
 
     _KWARGS_MAP = ['port', 'timeout', 'strip_aaa', 'dns_sec']
 
+    dns_sec: '_common.SharedObject[dict[str]]|None'
+
     def __init__(self, address: str, port=None, timeout=None, strip_aaa=None, dns_sec=None):
         parts = address.strip().split(':')
         address = parts[0]
@@ -71,7 +81,7 @@ class ProxyResolver(ProxyResolver):
         port = _common.DEFAULT_PORT if port is None else port
         timeout = self.DEFAULT_TIMEOUT if timeout is None else timeout
         strip_aaa = self.DEFAULT_STRIP_AAA if strip_aaa is None else strip_aaa
-        self.dns_sec: _common.SharedObject[dict[str]] = False if dns_sec is None else dns_sec
+        self.dns_sec: '_common.SharedObject[dict[str]]' = False if dns_sec is None else dns_sec
         if (
             not self.dns_sec
             or isinstance(self.dns_sec, str)
@@ -126,8 +136,16 @@ class ProxyResolver(ProxyResolver):
         return result
 
 
-class RoundRobinResolver(BaseResolver, _ty.Generic[*_TR]):
-    def __init__(self, resolvers: tuple[*_TR]):
+class RoundRobinResolver(BaseResolver, _ty.Generic[_Unpack[_TR]]):
+    @_ty.overload
+    def __init__(self, resolvers: 'tuple[_Unpack[_TR]]'):
+        ...
+
+    @_ty.overload
+    def __init__(self: 'RoundRobinResolver[BaseResolver]', resolvers: '_ty.Iterable[BaseResolver]'):
+        ...
+
+    def __init__(self, resolvers: '_ty.Iterable[BaseResolver] | tuple[_Unpack[_TR]]'):
         self.resolvers = tuple(resolvers)
 
     def _resolvers(self, request: DNSRecord, handler: DNSHandler) -> _ty.Iterable[BaseResolver]:
@@ -138,7 +156,7 @@ class RoundRobinResolver(BaseResolver, _ty.Generic[*_TR]):
         '''Gives the option to decide if a request is valid or check the next resolver for a request'''
         return bool(answer and answer.header.rcode == 0 and answer.rr)
 
-    def default_answer(self, badanswers: list[DNSRecord | None], request: DNSRecord, handler: DNSHandler):
+    def default_answer(self, badanswers: 'list[DNSRecord | None]', request: DNSRecord, handler: DNSHandler):
         '''Override default response'''
         return badanswers[-1] if badanswers else request.reply()
 
@@ -155,9 +173,9 @@ class RoundRobinResolver(BaseResolver, _ty.Generic[*_TR]):
 
 
 class ForwarderResolver(RoundRobinResolver[ProxyResolver]):
-    resolvers: _ty.Tuple[ProxyResolver, ...]
+    resolvers: 'tuple[ProxyResolver, ...]'
 
-    def __init__(self, upstream: str | _ty.List[str]):
+    def __init__(self, upstream: 'str | list[str]'):
         if isinstance(upstream, str):
             upstream = upstream.split(',')
         resolvers = [ProxyResolver(upstream) for upstream in upstream]
