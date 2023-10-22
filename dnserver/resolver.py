@@ -78,7 +78,9 @@ class RoundRobinResolver(BaseResolver, _ty.Generic[*_TR]):
         return answer
 
 
-class ForwarderResolver(RoundRobinResolver):
+class ForwarderResolver(RoundRobinResolver[ProxyResolver]):
+    resolvers: _ty.Tuple[ProxyResolver, ...]
+
     def __init__(self, upstream: str | _ty.List[str]):
         if isinstance(upstream, str):
             upstream = upstream.split(',')
