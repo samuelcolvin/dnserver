@@ -7,7 +7,7 @@ from typing import Any, List, Generic, overload, Iterable, TypeAlias, Sequence
 
 from dnslib.server import BaseResolver as LibBaseResolver, DNSServer as LibDNSServer
 
-from .load_records import Records, Zone, load_records
+from .load_records import Records, Zone
 from .resolver import BaseResolver, RecordsResolver, ProxyResolver, RoundRobinResolver, R
 from .common import LOGGER, DEFAULT_PORT, SharedObject, Record
 
@@ -130,7 +130,7 @@ class DNSServer(BaseDNSServer[RoundRobinResolver[RecordsResolver, ProxyResolver]
     def from_toml(
         cls, zones_file: str | Path, *, port: int | str | None = DEFAULT_PORT, upstream: str | None = DEFAULT_UPSTREAM
     ) -> 'DNSServer':
-        records = load_records(zones_file)
+        records = Records.load(zones_file)
         LOGGER.info(
             'loaded %d zone record from %s, with %s as a proxy DNS server',
             len(records.zones),
