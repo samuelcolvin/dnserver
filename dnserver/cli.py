@@ -7,7 +7,7 @@ import sys
 from time import sleep
 
 from .common import LOGGER
-from .main import DEFAULT_UPSTREAM, DNSServer
+from .main import DEFAULT_UPSTREAM, SimpleDNSServer
 from .version import VERSION
 
 __all__ = ('cli',)
@@ -71,7 +71,7 @@ def cli_logic(args: list[str]) -> int:
     signal.signal(signal.SIGTERM, handle_sig)
     signal.signal(signal.SIGINT, handle_sig)
 
-    server = DNSServer.from_toml(zones_file, port=port, upstream=upstream)
+    server = SimpleDNSServer.from_config(zones_file, port=port, upstream=upstream)
     server.start()
 
     try:

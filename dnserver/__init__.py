@@ -1,7 +1,7 @@
 from .config import Config
 from .common import *
-from .main import DNSServer
+from .main import SimpleDNSServer
 from .version import VERSION
 
-__all__ = 'DNSServer', 'Zone', '__version__'
+__all__ = 'SimpleDNSServer', 'Zone', '__version__'
 __version__ = VERSION

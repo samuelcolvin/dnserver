@@ -45,6 +45,15 @@ SERIAL_NO = int((_dt.datetime.utcnow() - _dt.datetime(1970, 1, 1)).total_seconds
 T = _ty.TypeVar('T')
 
 
+class _Default:
+    ...
+    def __bool__(self):
+        return False
+
+
+DEFAULT = _Default()
+
+
 class SharedObject(_ty.Generic[T]):
     def __init__(self, obj: T, lock: _Lock = None) -> None:
         self._obj = obj

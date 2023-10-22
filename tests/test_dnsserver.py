@@ -5,7 +5,7 @@ import pytest
 from dirty_equals import IsIP, IsPositive
 from dns.resolver import NoAnswer, Resolver as RawResolver
 
-from dnserver import DNSServer, Zone
+from dnserver import SimpleDNSServer, Zone
 
 Resolver = Callable[[str, str], List[Dict[str, Any]]]
 
@@ -37,7 +37,7 @@ def convert_answer(answer) -> Dict[str, Any]:
 def dns_server():
     port = 5053
 
-    server = DNSServer.from_file('example_zones.toml', port=port)
+    server = SimpleDNSServer.from_config('example_zones.toml', port=port)
     server.start()
     assert server.is_running
     yield server
@@ -45,7 +45,7 @@ def dns_server():
 
 
 @pytest.fixture(scope='session')
-def dns_resolver(dns_server: DNSServer):
+def dns_resolver(dns_server: SimpleDNSServer):
     resolver = RawResolver()
     resolver.nameservers = ['127.0.0.1']
     resolver.port = dns_server.port
@@ -136,7 +136,7 @@ def test_soa_higher(dns_resolver: Resolver):
 def test_dns_server_without_upstream():
     port = 5054
 
-    server = DNSServer.from_file('example_zones.toml', port=port, upstream=None)
+    server = SimpleDNSServer.from_config('example_zones.toml', port=port, upstream=None)
     server.start()
 
     resolver = RawResolver()
@@ -160,7 +160,7 @@ def test_dns_server_without_upstream():
         server.stop()
 
 
-def test_dynamic_zone_update(dns_server: DNSServer, dns_resolver: Resolver):
+def test_dynamic_zone_update(dns_server: SimpleDNSServer, dns_resolver: Resolver):
     assert dns_resolver('example.com', 'A') == [
         {
             'type': 'A',
@@ -200,7 +200,7 @@ def test_dynamic_zone_update(dns_server: DNSServer, dns_resolver: Resolver):
 def test_no_zone_at_initialization():
     port = 5055
 
-    server = DNSServer(port=port, upstream=None)
+    server = SimpleDNSServer(port=port, upstream=None)
     server.start()
 
     resolver = RawResolver()
