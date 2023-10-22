@@ -5,6 +5,7 @@ from dnslib.server import BaseResolver, DNSHandler, DNSRecord
 from dnslib.proxy import ProxyResolver
 
 from . import common as _common
+from . import dnssec
 
 R = _ty.TypeVar('R', bound=BaseResolver)
 _TR = _ty.TypeVarTuple('_TR')
@@ -45,23 +46,84 @@ class ProxyResolver(ProxyResolver):
     DEFAULT_TIMEOUT = 5
     DEFAULT_STRIP_AAA = False
 
-    def __init__(self, address: str, port=None, timeout=None, strip_aaa=None):
-        parts = address.split(':') + [None] * 3
+    _KWARGS_MAP = ['port', 'timeout', 'strip_aaa', 'dns_sec']
+
+    def __init__(self, address: str, port=None, timeout=None, strip_aaa=None, dns_sec=None):
+        parts = address.strip().split(':')
         address = parts[0]
-        port = parts[1] if port is None else port
-        timeout = parts[2] if timeout is None else timeout
-        strip_aaa = parts[3] if strip_aaa is None else strip_aaa
+        kwargs = {}
+        _stop_args = False
+        for idx, val in enumerate(parts[1:]):
+            if '=' in val:
+                key, val = val.split('=')
+                _stop_args = True
+            elif _stop_args:
+                raise ValueError(address)
+            else:
+                key = self._KWARGS_MAP[idx]
+            kwargs[key] = val
+
+        port = kwargs.get('port') if port is None else port
+        timeout = kwargs.get('timeout') if timeout is None else timeout
+        strip_aaa = kwargs.get('stip_aaa') if strip_aaa is None else strip_aaa
+        dns_sec = kwargs.get('dns_sec') if dns_sec is None else dns_sec
 
         port = _common.DEFAULT_PORT if port is None else port
         timeout = self.DEFAULT_TIMEOUT if timeout is None else timeout
         strip_aaa = self.DEFAULT_STRIP_AAA if strip_aaa is None else strip_aaa
+        self.dns_sec: _common.SharedObject[dict[str]] = False if dns_sec is None else dns_sec
+        if (
+            not self.dns_sec
+            or isinstance(self.dns_sec, str)
+            and self.dns_sec.strip().lower()
+            in [
+                'no',
+                'false',
+                '0',
+                'disable',
+                'disabled',
+            ]
+        ):
+            self.dns_sec = False
+
+        if self.dns_sec:
+            if not isinstance(self.dns_sec, _common.SharedObject):
+                self.dns_sec = _common.SharedObject(dns_sec)
+            _replace = None
+            with self.dns_sec as dns_sec:
+                if not isinstance(dns_sec, _ty.Mapping):
+                    if not dns_sec:
+                        _replace = {}
+                    else:
+                        _replace = {'anchors': {}, 'verified': {}}
+            if _replace is not None:
+                self.dns_sec.set(_replace)
+
+            with self.dns_sec as dns_sec:
+                if not dns_sec.get('anchors'):
+                    dns_sec['anchors'] = dnssec.TRUSTED_ANCHORS
+                if dns_sec.get('verified') is None:
+                    dns_sec['verified'] = {}
 
         super().__init__(address=address, port=int(port), timeout=int(timeout), strip_aaaa=bool(strip_aaa))
 
     def resolve(self, request: DNSRecord, handler: DNSHandler):
         type_name = _dns.QTYPE[request.q.qtype]
         _common.LOGGER.info('proxying %s[%s]', request.q.qname, type_name)
-        return super().resolve(request, handler)
+        if self.dns_sec:
+            request.add_ar(_dns.EDNS0(flags="do", udp_len=4096))
+        result = super().resolve(request, handler)
+        if self.dns_sec:
+            with self.dns_sec as dns_sec:
+                try:
+                    _common.LOGGER.info(f"Verifying DNSSEC for {request.q.qname}")
+                    dnssec.verify(bytes(result.pack()), self.address, dns_sec['verified'], dns_sec['anchors'])
+                    _common.LOGGER.info(f"Verified DNSSEC for {request.q.qname}")
+
+                except Exception as e:
+                    _common.LOGGER.warning(f"Could not verify DNSSEC for {request.q.qname}")
+                    # More check see if ti was due to non existent or bad signature and take approiate action
+        return result
 
 
 class RoundRobinResolver(BaseResolver, _ty.Generic[*_TR]):
