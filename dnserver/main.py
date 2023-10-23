@@ -128,12 +128,17 @@ class DNSServer(Generic[R]):
         if not isinstance(self.resolver, BaseResolver):
             raise ValueError(self.resolver)
 
-    def start(self):
+    def start(self, raise_=False):
         for bind in self.servers:
             LOGGER.info('starting DNS server on ip: %s port: %d protocol: %s', *bind)
-            server = LibDNSServer(self.resolver, port=bind.port, tcp=bind.proto is IPProto.TCP)
-            server.start_thread()
-            self.servers[bind] = server
+            try:
+                server = LibDNSServer(
+                    self.resolver, address=bind.address, port=bind.port, tcp=bind.proto is IPProto.TCP
+                )
+                server.start_thread()
+                self.servers[bind] = server
+            except OSError as e:
+                LOGGER.error(f'Could not start server on: {bind} due to: {e}')
 
     def stop(self):
         for server in self.servers.values():

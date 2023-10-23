@@ -3,9 +3,8 @@ This allows usage via `python -m dnserver`
 """
 import logging
 
-from .common import LOGGER
 from .cli import cli
-
+from .common import LOGGER
 
 if __name__ == '__main__':
     handler = logging.StreamHandler()
