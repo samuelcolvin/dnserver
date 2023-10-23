@@ -142,19 +142,20 @@ class DNSServer(Generic[R]):
 
     def stop(self):
         for server in self.servers.values():
-            server.stop()
-            server.server.server_close()
+            if server:
+                server.stop()
+                server.server.server_close()
 
     @property
     def is_running(self):
         for server in self.servers.values():
-            if server.isAlive():
+            if server and server.isAlive():
                 return True
         return False
 
     @property
     def port(self):
-        return next(iter(self.servers.keys())).port
+        return next(( bind for bind, server in self.servers.items() if server and server.isAlive())).port
 
 
 class SimpleDNSServer(DNSServer[Union[RoundRobinResolver[RecordsResolver, ForwarderResolver], RecordsResolver]]):
