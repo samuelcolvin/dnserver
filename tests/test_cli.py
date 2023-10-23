@@ -1,3 +1,4 @@
+from dnserver import SimpleDNSServer
 from dnserver.cli import cli_logic
 
 
@@ -7,12 +8,14 @@ def test_cli(mocker):
     class MockDNSServer:
         """Using this rather than MagicMock as I couldn't get is_running to evaluate to falsey"""
 
+        DEFAULT_UPSTREAM = SimpleDNSServer.DEFAULT_UPSTREAM
+
         def __init__(self, *args, **kwargs):
             self.run_check = 0
             calls.append(f'init {args} {kwargs}')
 
         @classmethod
-        def from_toml(cls, *args, **kwargs):
+        def from_config(cls, *args, **kwargs):
             return cls(*args, **kwargs)
 
         def start(self):
@@ -27,7 +30,7 @@ def test_cli(mocker):
         def stop(self):
             calls.append('stop')
 
-    mocker.patch('dnserver.cli.DNSServer', new=MockDNSServer)
+    mocker.patch('dnserver.cli.SimpleDNSServer', new=MockDNSServer)
     mock_signal = mocker.patch('dnserver.cli.signal.signal')
     assert cli_logic(['--port', '1234', 'zones.txt']) == 0
     assert calls == [
@@ -41,7 +44,7 @@ def test_cli(mocker):
 
 
 def test_cli_no_zones(mocker):
-    mock_dnserver = mocker.patch('dnserver.cli.DNSServer')
+    mock_dnserver = mocker.patch('dnserver.cli.SimpleDNSServer')
     mock_signal = mocker.patch('dnserver.cli.signal.signal')
     assert cli_logic(['--port', '1234']) == 1
     assert mock_dnserver.call_count == 0

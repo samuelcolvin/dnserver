@@ -1,12 +1,12 @@
 import pytest
 
-from dnserver.load_records import Records, Zone, load_records
+from dnserver.config import Config, Zone
 from dnserver.main import Record
 
 
 def test_load_records():
-    records = load_records('example_zones.toml')
-    assert records == Records(
+    records = Config.load('example_zones.toml')
+    assert records == Config(
         zones=[
             Zone(host='example.com', type='A', answer='1.2.3.4'),
             Zone(host='example.com', type='A', answer='1.2.3.4'),
@@ -34,7 +34,7 @@ def test_load_records():
 
 
 def test_create_server():
-    records = load_records('example_zones.toml')
+    records = Config.load('example_zones.toml')
     [Record(zone) for zone in records.zones]
 
 
@@ -42,7 +42,7 @@ def test_no_zones(tmp_path):
     path = tmp_path / 'zones.toml'
     path.write_text('x = 4')
     with pytest.raises(ValueError, match=r'^No zones found in .+zones\.toml$'):
-        load_records(path)
+        Config.load(path)
 
 
 @pytest.mark.parametrize(
@@ -64,4 +64,4 @@ def test_invalid_zones(tmp_path, toml, error):
     path = tmp_path / 'zones.toml'
     path.write_text(toml)
     with pytest.raises(ValueError, match=error):
-        load_records(path)
+        Config.load(path)

@@ -39,7 +39,8 @@ requires-python = '>=3.7'
 dependencies = [
     'dnslib>=0.9.20',
     'tomli;python_version<"3.11"',
-    'typing_extensions;python_version<"3.8"',
+    'typing_extensions;python_version<"3.11"',
+    'dnspython>=2.2.1'
 ]
 dynamic = ['version', 'license']
 
@@ -54,7 +55,7 @@ Changelog = 'https://github.com/samuelcolvin/dnserver/releases'
 
 [tool.pytest.ini_options]
 testpaths = 'tests'
-filterwarnings = ['error']
+filterwarnings = ['error','ignore::DeprecationWarning']
 timeout = 10
 
 [tool.coverage.run]

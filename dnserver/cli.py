@@ -6,14 +6,15 @@ import signal
 import sys
 from time import sleep
 
-from .main import DEFAULT_UPSTREAM, DNSServer, logger
+from .common import LOGGER
+from .main import SimpleDNSServer
 from .version import VERSION
 
 __all__ = ('cli',)
 
 
 def handle_sig(signum, frame):  # pragma: no cover
-    logger.info('pid=%d, got signal: %s, stopping...', os.getpid(), signal.Signals(signum).name)
+    LOGGER.info('pid=%d, got signal: %s, stopping...', os.getpid(), signal.Signals(signum).name)
     raise KeyboardInterrupt
 
 
@@ -61,7 +62,7 @@ def cli_logic(args: list[str]) -> int:
     if no_upstream:
         upstream = None
     else:
-        upstream = parsed_args.upstream or os.getenv('DNSERVER_UPSTREAM', DEFAULT_UPSTREAM)
+        upstream = parsed_args.upstream or os.getenv('DNSERVER_UPSTREAM', SimpleDNSServer.DEFAULT_UPSTREAM)
     zones_file = parsed_args.zones_file or os.getenv('DNSERVER_ZONE_FILE', None)
     if zones_file is None:
         print('no zones file specified, use --help for more information', file=sys.stderr)
@@ -70,7 +71,7 @@ def cli_logic(args: list[str]) -> int:
     signal.signal(signal.SIGTERM, handle_sig)
     signal.signal(signal.SIGINT, handle_sig)
 
-    server = DNSServer.from_toml(zones_file, port=port, upstream=upstream)
+    server = SimpleDNSServer.from_config(zones_file, port=port, upstream=upstream)
     server.start()
 
     try:
@@ -79,7 +80,7 @@ def cli_logic(args: list[str]) -> int:
     except KeyboardInterrupt:  # pragma: no cover
         pass
     finally:
-        logger.info('stopping DNS server')
+        LOGGER.info('stopping DNS server')
         server.stop()
 
     return 0

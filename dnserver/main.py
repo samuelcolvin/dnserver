@@ -1,193 +1,216 @@
-from __future__ import annotations as _annotations
-
-import logging
-from datetime import datetime
+from enum import Flag, auto
 from pathlib import Path
-from textwrap import wrap
-from typing import Any, List
+from typing import Generic, Iterable, NamedTuple, Union, overload
+from urllib.parse import urlparse
 
-from dnslib import QTYPE, RR, DNSLabel, dns
-from dnslib.proxy import ProxyResolver as LibProxyResolver
-from dnslib.server import BaseResolver as LibBaseResolver, DNSServer as LibDNSServer
+from dnslib.server import DNSServer as LibDNSServer
 
-from .load_records import Records, Zone, load_records
+from .common import DEFAULT, DEFAULT_PORT, LOGGER, Record, Records, SharedObject, Zone, _Self
+from .config import Config
+from .resolver import BaseResolver, ForwarderResolver, R, RecordsResolver, RoundRobinResolver
 
-__all__ = 'DNSServer', 'logger'
+__all__ = 'SimpleDNSServer', 'DNSServer'
 
-SERIAL_NO = int((datetime.utcnow() - datetime(1970, 1, 1)).total_seconds())
+extras_args = {}
 
-handler = logging.StreamHandler()
-handler.setLevel(logging.INFO)
-handler.setFormatter(logging.Formatter('%(asctime)s: %(message)s', datefmt='%H:%M:%S'))
+try:
+    from enum import STRICT
 
-logger = logging.getLogger(__name__)
-logger.addHandler(handler)
-logger.setLevel(logging.INFO)
-
-TYPE_LOOKUP = {
-    'A': (dns.A, QTYPE.A),
-    'AAAA': (dns.AAAA, QTYPE.AAAA),
-    'CAA': (dns.CAA, QTYPE.CAA),
-    'CNAME': (dns.CNAME, QTYPE.CNAME),
-    'DNSKEY': (dns.DNSKEY, QTYPE.DNSKEY),
-    'MX': (dns.MX, QTYPE.MX),
-    'NAPTR': (dns.NAPTR, QTYPE.NAPTR),
-    'NS': (dns.NS, QTYPE.NS),
-    'PTR': (dns.PTR, QTYPE.PTR),
-    'RRSIG': (dns.RRSIG, QTYPE.RRSIG),
-    'SOA': (dns.SOA, QTYPE.SOA),
-    'SRV': (dns.SRV, QTYPE.SRV),
-    'TXT': (dns.TXT, QTYPE.TXT),
-    'SPF': (dns.TXT, QTYPE.TXT),
-}
-DEFAULT_PORT = 53
-DEFAULT_UPSTREAM = '1.1.1.1'
+    extras_args['boundary'] = STRICT
+except ImportError:
+    pass
 
 
-class Record:
-    def __init__(self, zone: Zone):
-        self._rname = DNSLabel(zone.host)
-
-        rd_cls, self._rtype = TYPE_LOOKUP[zone.type]
-
-        args: list[Any]
-        if isinstance(zone.answer, str):
-            if self._rtype == QTYPE.TXT:
-                args = [wrap(zone.answer, 255)]
-            else:
-                args = [zone.answer]
-        else:
-            if self._rtype == QTYPE.SOA and len(zone.answer) == 2:
-                # add sensible times to SOA
-                args = zone.answer + [(SERIAL_NO, 3600, 3600 * 3, 3600 * 24, 3600)]
-            else:
-                args = zone.answer
-
-        if self._rtype in (QTYPE.NS, QTYPE.SOA):
-            ttl = 3600 * 24
-        else:
-            ttl = 300
-
-        self.rr = RR(
-            rname=self._rname,
-            rtype=self._rtype,
-            rdata=rd_cls(*args),
-            ttl=ttl,
-        )
-
-    def match(self, q):
-        return q.qname == self._rname and (q.qtype == QTYPE.ANY or q.qtype == self._rtype)
-
-    def sub_match(self, q):
-        return self._rtype == QTYPE.SOA and q.qname.matchSuffix(self._rname)
-
-    def __str__(self):
-        return str(self.rr)
+class IPProto(Flag, **extras_args):
+    UDP = auto()
+    TCP = auto()
+    BOTH = TCP | UDP
 
 
-def resolve(request, handler, records):
-    records = [Record(zone) for zone in records.zones]
-    type_name = QTYPE[request.q.qtype]
-    reply = request.reply()
-    for record in records:
-        if record.match(request.q):
-            reply.add_answer(record.rr)
+class IPBind(NamedTuple):
+    address: str
+    port: 'int | None'
+    proto: IPProto
 
-    if reply.rr:
-        logger.info('found zone for %s[%s], %d replies', request.q.qname, type_name, len(reply.rr))
-        return reply
-
-    # no direct zone so look for an SOA record for a higher level zone
-    for record in records:
-        if record.sub_match(request.q):
-            reply.add_answer(record.rr)
-
-    if reply.rr:
-        logger.info('found higher level SOA resource for %s[%s]', request.q.qname, type_name)
-        return reply
-
-
-class BaseResolver(LibBaseResolver):
-    def __init__(self, records: Records):
-        self.records = records
-        super().__init__()
-
-    def resolve(self, request, handler):
-        answer = resolve(request, handler, self.records)
-        if answer:
-            return answer
-
-        type_name = QTYPE[request.q.qtype]
-        logger.info('no local zone found, not proxying %s[%s]', request.q.qname, type_name)
-        return request.reply()
-
-
-class ProxyResolver(LibProxyResolver):
-    def __init__(self, records: Records, upstream: str):
-        self.records = records
-        super().__init__(address=upstream, port=53, timeout=5)
-
-    def resolve(self, request, handler):
-        answer = resolve(request, handler, self.records)
-        if answer:
-            return answer
-
-        type_name = QTYPE[request.q.qtype]
-        logger.info('no local zone found, proxying %s[%s]', request.q.qname, type_name)
-        return super().resolve(request, handler)
-
-
-class DNSServer:
-    def __init__(
-        self,
-        records: Records | None = None,
-        port: int | str | None = DEFAULT_PORT,
-        upstream: str | None = DEFAULT_UPSTREAM,
-    ):
-        self.port: int = DEFAULT_PORT if port is None else int(port)
-        self.upstream: str | None = upstream
-        self.udp_server: LibDNSServer | None = None
-        self.tcp_server: LibDNSServer | None = None
-        self.records: Records = records if records else Records(zones=[])
+    def expand(self):
+        for proto in IPProto:
+            if proto in self.proto:
+                yield IPBind(*self[:2], proto)
 
     @classmethod
-    def from_toml(
-        cls, zones_file: str | Path, *, port: int | str | None = DEFAULT_PORT, upstream: str | None = DEFAULT_UPSTREAM
-    ) -> 'DNSServer':
-        records = load_records(zones_file)
-        logger.info(
-            'loaded %d zone record from %s, with %s as a proxy DNS server',
-            len(records.zones),
-            zones_file,
-            upstream,
-        )
-        return DNSServer(records, port=port, upstream=upstream)
+    def parse(
+        cls,
+        address: str,
+        port: 'str | int' = None,
+        proto: 'str | IPProto' = None,
+        *,
+        default_port=0,
+        default_address='',
+        default_proto=IPProto.BOTH,
+    ):
+        if not address:
+            address = ''
+        try:
+            _port = int(address)
+            address = f'{default_address}:{_port}'
+        except Exception:
+            pass
+        address = str(address or default_address)
+        if '://' not in address:
+            address = 'none://' + address
+        parsed = urlparse(address)
+        address = parsed.hostname or default_address
+        if port is None:
+            port = parsed.port or default_port
+        if proto is None and parsed.scheme != 'none':
+            proto = parsed.scheme
+        if proto is None:
+            proto = default_proto
+        if not isinstance(proto, IPProto):
+            proto = proto.upper()
+            if proto in IPProto:
+                proto = IPProto[proto]
+            else:
+                raise ValueError(proto)
+        return cls(address, int(port), proto)
 
-    def start(self):
-        if self.upstream:
-            logger.info('starting DNS server on port %d, upstream DNS server "%s"', self.port, self.upstream)
-            resolver = ProxyResolver(self.records, self.upstream)
-        else:
-            logger.info('starting DNS server on port %d, without upstream DNS server', self.port)
-            resolver = BaseResolver(self.records)
 
-        self.udp_server = LibDNSServer(resolver, port=self.port)
-        self.tcp_server = LibDNSServer(resolver, port=self.port, tcp=True)
-        self.udp_server.start_thread()
-        self.tcp_server.start_thread()
+IPBindLike = Union[int, str, IPBind, tuple]
+
+
+class DNSServer(Generic[R]):
+    resolver: R
+
+    @overload
+    def __new__(self, resolver: R, port: 'IPBindLike | Iterable[IPBindLike] | None' = None) -> 'DNSServer[R]':
+        ...
+
+    @overload
+    def __new__(
+        self, resolver: str, port: 'IPBindLike | Iterable[IPBindLike] | None' = None
+    ) -> 'DNSServer[ForwarderResolver]':
+        ...
+
+    @overload
+    def __new__(
+        self,
+        resolver: 'Records | SharedObject[Records] | None' = None,
+        port: 'IPBindLike | Iterable[IPBindLike] | None' = None,
+    ) -> 'DNSServer[RecordsResolver]':
+        ...
+
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls)
+
+    def __init__(
+        self,
+        resolver: 'R | Records | SharedObject[Records] | str | None' = None,
+        port: 'int | str | IPBind | Iterable[int | str | IPBind] | None' = None,
+    ):
+        ports: 'list[IPBind]' = DEFAULT_PORT if port is None else port
+        if not isinstance(ports, list):
+            ports = [ports]
+        self.servers: 'dict[IPBind, LibDNSServer | None]' = {}
+        for port in ports:
+            if not isinstance(port, tuple):
+                port = (port,)
+            bind = IPBind.parse(*port, default_port=DEFAULT_PORT)
+            for _bind in bind.expand():
+                self.servers[_bind] = None
+
+        self.resolver = resolver or list([])
+        if isinstance(self.resolver, list):
+            self.resolver = SharedObject(self.resolver)
+        if isinstance(self.resolver, SharedObject):
+            self.resolver = RecordsResolver(self.resolver)
+        if isinstance(self.resolver, str):
+            self.resolver = ForwarderResolver(self.resolver)
+        if not isinstance(self.resolver, BaseResolver):
+            raise ValueError(self.resolver)
+
+    def start(self, raise_=False):
+        for bind in self.servers:
+            LOGGER.info('starting DNS server on ip: %s port: %d protocol: %s', *bind)
+            try:
+                server = LibDNSServer(
+                    self.resolver, address=bind.address, port=bind.port, tcp=bind.proto is IPProto.TCP
+                )
+                server.start_thread()
+                self.servers[bind] = server
+            except OSError as e:
+                LOGGER.error(f'Could not start server on: {bind} due to: {e}')
 
     def stop(self):
-        self.udp_server.stop()
-        self.udp_server.server.server_close()
-        self.tcp_server.stop()
-        self.tcp_server.server.server_close()
+        for server in self.servers.values():
+            if server:
+                server.stop()
+                server.server.server_close()
 
     @property
     def is_running(self):
-        return (self.udp_server and self.udp_server.isAlive()) or (self.tcp_server and self.tcp_server.isAlive())
+        for server in self.servers.values():
+            if server and server.isAlive():
+                return True
+        return False
 
-    def add_record(self, zone: Zone):
-        self.records.zones.append(zone)
+    @property
+    def port(self):
+        return next((bind for bind, server in self.servers.items() if server and server.isAlive())).port
 
-    def set_records(self, zones: List[Zone]):
-        self.records.zones = zones
+
+class SimpleDNSServer(DNSServer[Union[RoundRobinResolver[RecordsResolver, ForwarderResolver], RecordsResolver]]):
+    DEFAULT_UPSTREAM = '1.1.1.1'
+
+    def __new__(cls, *args, **kwargs) -> '_Self':
+        return super().__new__(cls)
+
+    def __init__(
+        self,
+        records: 'Records | SharedObject[Records] | None' = None,
+        port: 'IPBindLike | Iterable[IPBindLike] | None' = DEFAULT_PORT,
+        upstream: 'str | list[str] | None' = DEFAULT_UPSTREAM,
+    ):
+        super().__init__(records, port)
+        self.records: SharedObject[Records] = self.resolver.records
+        if upstream:
+            LOGGER.info('upstream DNS server "%s"', upstream)
+            self.resolver = RoundRobinResolver([self.resolver, ForwarderResolver(upstream)])
+        else:
+            LOGGER.info('without upstream DNS server')
+
+    @classmethod
+    def from_config(
+        cls,
+        config: 'str | Path | Config',
+        *,
+        port: 'IPBindLike | None' = None,
+        upstream: 'str | None' = DEFAULT,
+    ) -> '_Self':
+        if isinstance(config, (str, Path)):
+            config = Config.load(config)
+        if port is None:
+            port = config.port or DEFAULT_PORT
+        if upstream is DEFAULT:
+            upstream = config.upstream or cls.DEFAULT_UPSTREAM
+        records = config.records()
+        LOGGER.info(
+            'loaded %d zone record from %s, with %s as a proxy DNS server',
+            len(config.zones),
+            config,
+            upstream,
+        )
+        return cls(records, port=port, upstream=upstream)
+
+    def add_record(self, record: 'Zone | Record'):
+        if not isinstance(record, Record):
+            record = Record(record)
+        with self.records as records:
+            records.append(record)
+
+    def set_records(self, records: 'Iterable[Zone | Record]'):
+        _records = []
+        for record in records:
+            if not isinstance(record, Record):
+                record = Record(record)
+            _records.append(record)
+        self.records.set(_records)
