@@ -43,7 +43,7 @@ class IPBind(NamedTuple):
         address: str,
         port: 'str | int' = None,
         proto: 'str | IPProto' = None,
-        /,
+        *,
         default_port=0,
         default_address='0.0.0.0',
         default_proto=IPProto.BOTH,
