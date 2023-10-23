@@ -53,7 +53,7 @@ class IPBind(NamedTuple):
         try:
             _port = int(address)
             address = f'{default_address}:{_port}'
-        except:
+        except Exception:
             pass
         address = str(address or default_address)
         if '://' not in address:

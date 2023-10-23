@@ -130,8 +130,8 @@ class ProxyResolver(ProxyResolver):
                     dnssec.verify(bytes(result.pack()), self.address, dns_sec['verified'], dns_sec['anchors'])
                     _common.LOGGER.info(f'Verified DNSSEC for {request.q.qname}')
 
-                except Exception as e:
-                    _common.LOGGER.warning(f'Could not verify DNSSEC for {request.q.qname}')
+                except Exception as _e:
+                    _common.LOGGER.warning(f'Could not verify DNSSEC for {request.q.qname}: {_e}')
                     # More check see if ti was due to non existent or bad signature and take approiate action
         return result
 
