@@ -14,9 +14,12 @@ try:
 except ImportError:
     from typing_extensions import Literal as _Lit
 try:
-    from typing import Self as _Self
-except ImportError:
-    from typing_extensions import Self as _Self
+    try:
+        from typing import Self as _Self
+    except ImportError:
+        from typing_extensions import Self as _Self
+except:
+    _Self = _Any
 
 RecordType = _Lit[
     'A', 'AAAA', 'CAA', 'CNAME', 'DNSKEY', 'MX', 'NAPTR', 'NS', 'PTR', 'RRSIG', 'SOA', 'SRV', 'TXT', 'SPF'
