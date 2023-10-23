@@ -131,7 +131,7 @@ class DNSServer(Generic[R]):
     def start(self):
         for bind in self.servers:
             LOGGER.info('starting DNS server on ip: %s port: %d protocol: %s', *bind)
-            server = LibDNSServer(self.resolver, address=bind.address, port=bind.port, tcp=bind.proto is IPProto.TCP)
+            server = LibDNSServer(self.resolver, port=bind.port, tcp=bind.proto is IPProto.TCP)
             server.start_thread()
             self.servers[bind] = server
 
