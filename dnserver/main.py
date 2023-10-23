@@ -45,7 +45,7 @@ class IPBind(NamedTuple):
         proto: 'str | IPProto' = None,
         *,
         default_port=0,
-        default_address='0.0.0.0',
+        default_address='',
         default_proto=IPProto.BOTH,
     ):
         if not address:
