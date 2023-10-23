@@ -7,13 +7,13 @@ from dnslib.server import BaseResolver, DNSHandler, DNSRecord
 from . import common as _common, dnssec
 
 try:
-    from typing_extensions import (  # typing_extensions only needed for Python < 3.11
-        TypeVarTuple as _TV,
-        Unpack as _Unpack,
-    )
-except ImportError:
-    ...
-
+    from typing import TypeVarTuple as _TV
+except:
+    from typing_extensions import TypeVarTuple as _TV
+try:
+    from typing import Unpack as _Unpack
+except:
+    from typing_extensions import Unpack as _Unpack
 
 R = _ty.TypeVar('R', bound=BaseResolver)
 _TR = _TV('_TR')
