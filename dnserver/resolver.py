@@ -8,11 +8,11 @@ from . import common as _common, dnssec
 
 try:
     from typing import TypeVarTuple as _TV
-except:
+except ImportError:
     from typing_extensions import TypeVarTuple as _TV
 try:
     from typing import Unpack as _Unpack
-except:
+except ImportError:
     from typing_extensions import Unpack as _Unpack
 
 R = _ty.TypeVar('R', bound=BaseResolver)
@@ -121,17 +121,17 @@ class ProxyResolver(ProxyResolver):
         type_name = _dns.QTYPE[request.q.qtype]
         _common.LOGGER.info('proxying %s[%s]', request.q.qname, type_name)
         if self.dns_sec:
-            request.add_ar(_dns.EDNS0(flags="do", udp_len=4096))
+            request.add_ar(_dns.EDNS0(flags='do', udp_len=4096))
         result = super().resolve(request, handler)
         if self.dns_sec:
             with self.dns_sec as dns_sec:
                 try:
-                    _common.LOGGER.info(f"Verifying DNSSEC for {request.q.qname}")
+                    _common.LOGGER.info(f'Verifying DNSSEC for {request.q.qname}')
                     dnssec.verify(bytes(result.pack()), self.address, dns_sec['verified'], dns_sec['anchors'])
-                    _common.LOGGER.info(f"Verified DNSSEC for {request.q.qname}")
+                    _common.LOGGER.info(f'Verified DNSSEC for {request.q.qname}')
 
                 except Exception as e:
-                    _common.LOGGER.warning(f"Could not verify DNSSEC for {request.q.qname}")
+                    _common.LOGGER.warning(f'Could not verify DNSSEC for {request.q.qname}')
                     # More check see if ti was due to non existent or bad signature and take approiate action
         return result
 
@@ -149,15 +149,15 @@ class RoundRobinResolver(BaseResolver, _ty.Generic[_Unpack[_TR]]):
         self.resolvers = tuple(resolvers)
 
     def _resolvers(self, request: DNSRecord, handler: DNSHandler) -> _ty.Iterable[BaseResolver]:
-        '''Gives the option to modify the order of resolvers or exclude resolver by request'''
+        """Gives the option to modify the order of resolvers or exclude resolver by request"""
         return self.resolvers
 
     def validate(self, answer: DNSRecord, resolver: BaseResolver, request: DNSRecord, handler: DNSHandler):
-        '''Gives the option to decide if a request is valid or check the next resolver for a request'''
+        """Gives the option to decide if a request is valid or check the next resolver for a request"""
         return bool(answer and answer.header.rcode == 0 and answer.rr)
 
     def default_answer(self, badanswers: 'list[DNSRecord | None]', request: DNSRecord, handler: DNSHandler):
-        '''Override default response'''
+        """Override default response"""
         return badanswers[-1] if badanswers else request.reply()
 
     def resolve(self, request: DNSRecord, handler: DNSHandler):
