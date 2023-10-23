@@ -15,15 +15,13 @@ try:
 except ImportError:
     from typing_extensions import Literal as _Lit
 try:
-    try:
-        from typing import Self as _Self
-    except ImportError:
-        from typing_extensions import Self as _Self
+    from typing import Self as _Self
 except ImportError:
-    _Self = _Any
+    from typing_extensions import Self as _Self
+
 
 RecordType = _Lit[
-    'A', 'AAAA', 'CAA', 'CNAME', 'DNSKEY', 'MX', 'NAPTR', 'NS', 'PTR', 'RRSIG', 'SOA', 'SRV', 'TXT', 'SPF'
+    'A', 'AAAA', 'CAA', 'CNAME', 'DNSKEY', 'MX', 'NAPTR', 'NS', 'PTR', 'RRSIG', 'SOA', 'SRV', 'TXT', 'SPF'  # noqa: F821
 ]
 RECORD_TYPES = RecordType.__args__  # type: ignore
 
@@ -98,7 +96,9 @@ class Zone:
 
         type_ = data['type']
         if type_ not in RECORD_TYPES:
-            raise ValueError(f'Zone {index} is invalid, "type" must be one of {", ".join(RECORD_TYPES)}, got {data!r}')
+            raise ValueError(
+                f'Zone {index} is invalid, "type" must be one of {", ".join(RECORD_TYPES)}, got {data!r}'  # noqa: Q000
+            )
 
         answer = data['answer']
         if isinstance(answer, str):
