@@ -155,7 +155,7 @@ class DNSServer(Generic[R]):
 
     @property
     def port(self):
-        return next(( bind for bind, server in self.servers.items() if server and server.isAlive())).port
+        return next((bind for bind, server in self.servers.items() if server and server.isAlive())).port
 
 
 class SimpleDNSServer(DNSServer[Union[RoundRobinResolver[RecordsResolver, ForwarderResolver], RecordsResolver]]):
