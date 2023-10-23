@@ -37,7 +37,7 @@ def _all_parser(file: BinaryIO):
     for parser in PARSERS.values():
         try:
             return parser()(file)
-        except:
+        except Exception:
             pass
     raise Exception()
 

@@ -8,6 +8,7 @@ from threading import Lock as _Lock
 from typing import Any as _Any
 
 import dnslib as _dns
+from dnslib import QTYPE as _QT
 
 try:
     from typing import Literal as _Lit
@@ -18,7 +19,7 @@ try:
         from typing import Self as _Self
     except ImportError:
         from typing_extensions import Self as _Self
-except:
+except ImportError:
     _Self = _Any
 
 RecordType = _Lit[
@@ -29,20 +30,20 @@ RECORD_TYPES = RecordType.__args__  # type: ignore
 
 LOGGER = _log.getLogger(__name__)
 TYPE_LOOKUP = {
-    'A': (_dns.A, _dns.QTYPE.A),
-    'AAAA': (_dns.AAAA, _dns.QTYPE.AAAA),
-    'CAA': (_dns.CAA, _dns.QTYPE.CAA),
-    'CNAME': (_dns.CNAME, _dns.QTYPE.CNAME),
-    'DNSKEY': (_dns.DNSKEY, _dns.QTYPE.DNSKEY),
-    'MX': (_dns.MX, _dns.QTYPE.MX),
-    'NAPTR': (_dns.NAPTR, _dns.QTYPE.NAPTR),
-    'NS': (_dns.NS, _dns.QTYPE.NS),
-    'PTR': (_dns.PTR, _dns.QTYPE.PTR),
-    'RRSIG': (_dns.RRSIG, _dns.QTYPE.RRSIG),
-    'SOA': (_dns.SOA, _dns.QTYPE.SOA),
-    'SRV': (_dns.SRV, _dns.QTYPE.SRV),
-    'TXT': (_dns.TXT, _dns.QTYPE.TXT),
-    'SPF': (_dns.TXT, _dns.QTYPE.TXT),
+    'A': (_dns.A, _QT.A),
+    'AAAA': (_dns.AAAA, _QT.AAAA),
+    'CAA': (_dns.CAA, _QT.CAA),
+    'CNAME': (_dns.CNAME, _QT.CNAME),
+    'DNSKEY': (_dns.DNSKEY, _QT.DNSKEY),
+    'MX': (_dns.MX, _QT.MX),
+    'NAPTR': (_dns.NAPTR, _QT.NAPTR),
+    'NS': (_dns.NS, _QT.NS),
+    'PTR': (_dns.PTR, _QT.PTR),
+    'RRSIG': (_dns.RRSIG, _QT.RRSIG),
+    'SOA': (_dns.SOA, _QT.SOA),
+    'SRV': (_dns.SRV, _QT.SRV),
+    'TXT': (_dns.TXT, _QT.TXT),
+    'SPF': (_dns.TXT, _QT.TXT),
 }
 DEFAULT_PORT = 53
 SERIAL_NO = int((_dt.datetime.utcnow() - _dt.datetime(1970, 1, 1)).total_seconds())
@@ -115,18 +116,18 @@ class Zone:
         rd_cls, rtype = TYPE_LOOKUP[zone.type]
         args: list[_ty.Any]
         if isinstance(zone.answer, str):
-            if rtype == _dns.QTYPE.TXT:
+            if rtype == _QT.TXT:
                 args = [_wrap(zone.answer, 255)]
             else:
                 args = [zone.answer]
         else:
-            if rtype == _dns.QTYPE.SOA and len(zone.answer) == 2:
+            if rtype == _QT.SOA and len(zone.answer) == 2:
                 # add sensible times to SOA
                 args = zone.answer + [(SERIAL_NO, 3600, 3600 * 3, 3600 * 24, 3600)]
             else:
                 args = zone.answer
 
-        if rtype in (_dns.QTYPE.NS, _dns.QTYPE.SOA):
+        if rtype in (_QT.NS, _QT.SOA):
             ttl = 3600 * 24
         else:
             ttl = 300
@@ -149,10 +150,10 @@ class Record:
         return getattr(self.rr, __name)
 
     def match(self, q: _dns.DNSQuestion) -> bool:
-        return q.qname == self.rr._rname and (q.qtype == _dns.QTYPE.ANY or q.qtype == self.rr.rtype)
+        return q.qname == self.rr._rname and (q.qtype == _QT.ANY or q.qtype == self.rr.rtype)
 
     def sub_match(self, q: _dns.DNSQuestion) -> bool:
-        return self.rr.rtype == _dns.QTYPE.SOA and q.qname.matchSuffix(self.rr.rname)
+        return self.rr.rtype == _QT.SOA and q.qname.matchSuffix(self.rr.rname)
 
 
 if _ty.TYPE_CHECKING:

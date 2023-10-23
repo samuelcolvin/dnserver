@@ -20,7 +20,7 @@ def load_dsdigest(digest: 'bytes | str', digest_type: DSDigest, key_id: int, alg
     else:
         digest_type = DSDigest(digest_type)
 
-    dsrdata = struct.pack("!HBB", key_id, algorithm, digest_type) + digest
+    dsrdata = struct.pack('!HBB', key_id, algorithm, digest_type) + digest
     return dns.rdata.from_wire(dns.rdataclass.IN, dns.rdatatype.DS, dsrdata, 0, len(dsrdata))
 
 
